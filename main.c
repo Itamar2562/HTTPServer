@@ -68,35 +68,67 @@ int main()
 //   printf("The ipv4 address is: %s\n",ipv4);
 
 
-  int status;
   struct addrinfo hints;
   struct addrinfo *servinfo; //results
 
   memset(&hints,0,sizeof hints); //clear the struct from garabge
-  hints.ai_family= AF_INET; //ipv4
+  hints.ai_family= AF_UNSPEC; //ipv4
   hints.ai_socktype =SOCK_STREAM; //tcp
 
-  char *dns = "www.ynet.co.il";
-  char *port = "80";
+  char *dns = "www.spotify.com";
+  char *port = "443"; //can be number or name :0
 
-  status=getaddrinfo(dns,port,&hints, &servinfo);
+  int status=getaddrinfo(dns,port,&hints, &servinfo);
   if (status!=0){
 
     printf("error is %s\n", gai_strerror(status));
     return 1;
   }
-printf("family = %d\n", servinfo->ai_family);
-printf("socktype = %d\n", servinfo->ai_socktype);
-char ip_name[INET_ADDRSTRLEN];
-if (servinfo->ai_family==AF_INET) 
-// ai_addr actually points to a struct sockaddr_in
-// so cast the generic pointer to the correct type
-{
-    struct sockaddr_in *ipv4= (struct sockaddr_in *)servinfo->ai_addr;
-    inet_ntop(AF_INET,&ipv4->sin_addr,ip_name,INET_ADDRSTRLEN);
-    printf("the ip name is drum rol ...... %s\n ", ip_name);
+  for (struct addrinfo *p=servinfo; p!=NULL; p=p->ai_next)
+  {
 
-}
+    struct sockaddr_in* ipv4;
+    struct sockaddr_in6* ipv6;
+    char * ipversion;
+
+     void* addr;
+
+     if (p->ai_family==AF_INET)// IPV4
+     {
+           ipv4=(struct sockaddr_in*)p->ai_addr;
+           addr = &ipv4->sin_addr;
+           ipversion="IPV4";
+     }
+     else if (p->ai_family==AF_INET6)//IPV6
+     {
+      ipv6=(struct sockaddr_in6* )p->ai_addr;
+      addr=&ipv6->sin6_addr;
+      ipversion="IPV6";
+
+     }
+     char buffer[INET6_ADDRSTRLEN];// WE USE SIZE OF IPV6 BECAUSE ITS BIGGER SO IT CAN FIT IPV4||IPV6
+     inet_ntop(p->ai_family, addr, buffer, INET6_ADDRSTRLEN);
+     
+     printf("the ip of version %s is %s\n",ipversion,buffer);
+  }
+  freeaddrinfo(servinfo);
+
+
+
+// printf("family = %d\n", servinfo->ai_family);
+// printf("socktype = %d\n", servinfo->ai_socktype);
+// char ip_name[INET_ADDRSTRLEN];
+// if (servinfo->ai_family==AF_INET) 
+// // ai_addr actually points to a struct sockaddr_in
+// // so cast the generic pointer to the correct type
+// {
+//     struct sockaddr_in *ipv4= (struct sockaddr_in *)servinfo->ai_addr;
+//      //if its ipv4 we can treat the addr ptr as sockaddr_in because the general one is a wrapper pointing
+//      //to memory built exactly the same.
+//     inet_ntop(AF_INET,&ipv4->sin_addr,ip_name,INET_ADDRSTRLEN); // e
+//     printf("the ip name is drum rol ...... %s\n ", ip_name);
+
+// }
 
     return 0;
 }

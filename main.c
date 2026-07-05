@@ -72,8 +72,6 @@ int main()
   bind (sockfd, res->ai_addr, res->ai_addrlen);
 
   printf("im on test");
-
-
  
   freeaddrinfo(res);
 

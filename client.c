@@ -12,7 +12,7 @@
 
 
 #define MAXCLIENTS 2
-#define SERVER_PORT "4555"
+#define SERVER_PORT "4556"
 
 
 void * getCorrectSinAddress(struct sockaddr* genericAddr)
@@ -133,12 +133,27 @@ int GetClientSocket(char *host )
 
 
 
+void sendData(int sockfd, char *data,size_t length)
+{
+  int bytesSend=send(sockfd,data, length,0 );
+  printf("send %d\n",bytesSend);
+}
+
+void recvData(int sockfd, char *buffer,size_t length)
+{ 
+
+  int bytesrecv=recv(sockfd, buffer, length-1,0);
+  buffer[bytesrecv]='\0';
+  printf("recived %s\n",buffer);
+
+}
 
 
 int main(int argc, char *argv[])
 {
     int socketfd=GetClientSocket(argv[1]);
-
+    char buffer[100];
+    recvData(socketfd,buffer,100);
     close(socketfd);
 
       

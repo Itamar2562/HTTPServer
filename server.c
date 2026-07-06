@@ -12,7 +12,7 @@
 
 
 #define MAXCLIENTS 2
-#define SERVERPORT "4555"
+#define SERVER_PORT "4555"
 
 
 void printAddressIPV4(struct sockaddr_in* addr)
@@ -53,29 +53,33 @@ void printAddresses(struct addrinfo* addresses){
   }
 }
 
+int getAddrInfo(struct addrinfo** res,int family, int sockType, int flag){
+    struct addrinfo hints;
+    memset(&hints,0, sizeof hints);
+    hints.ai_family= family; 
+    hints.ai_socktype =sockType; //tcp
+    hints.ai_flags=flag;
+
+    int status=getaddrinfo(NULL,SERVER_PORT,&hints, res);
+    if (status!=0)
+    {
+        printf("error is %s\n", gai_strerror(status));
+        exit(1);
+    }
+    return 0;
+}
+
 
 int GetServerSocket()
 {
-  struct addrinfo hints, *res;
+  struct addrinfo *res;
   int sockfd=-1;
+\
+  getAddrInfo(&res, AF_UNSPEC, SOCK_STREAM, AI_PASSIVE); 
 
-  memset(&hints,0,sizeof hints); //clear the struct from garabge
-  hints.ai_family= AF_INET; 
-  hints.ai_socktype =SOCK_STREAM; //tcp
-  hints.ai_flags=AI_PASSIVE;
-
-  int status=getaddrinfo(NULL,SERVERPORT,&hints, &res);
-  if (status!=0)
-  {
-    printf("error is %s\n", gai_strerror(status));
-    return -1;
-  }
 
   for (struct addrinfo * p=res; p!=NULL; p=p->ai_next )
   {
-    if (p->ai_family!=hints.ai_family || p->ai_socktype != hints.ai_socktype)
-      continue;
-    
       sockfd=socket(p->ai_family, p->ai_socktype, p->ai_protocol);
       if (sockfd ==-1)
       {

@@ -53,7 +53,7 @@ void printAddresses(struct addrinfo* addresses){
   }
 }
 
-int getAddrInfo(struct addrinfo** res,int family, int sockType, int flag){
+void getAddrInfo(struct addrinfo** res,int family, int sockType, int flag){
     struct addrinfo hints;
     memset(&hints,0, sizeof hints);
     hints.ai_family= family; 
@@ -66,7 +66,6 @@ int getAddrInfo(struct addrinfo** res,int family, int sockType, int flag){
         printf("error is %s\n", gai_strerror(status));
         exit(1);
     }
-    return 0;
 }
 
 
@@ -127,9 +126,10 @@ int main()
  
    printf("listening for incoming clients..\n");
   struct sockaddr_storage ClientAddr;
-  socklen_t ClientAddrLen=sizeof(ClientAddr);
 
-  while (1){
+  while (1)
+  {
+      socklen_t ClientAddrLen=sizeof(ClientAddr);
       int ClientSockfd = accept(sockfd, (struct sockaddr* )&ClientAddr, &ClientAddrLen);
       if (ClientSockfd==-1)
       {
@@ -142,9 +142,9 @@ int main()
       inet_ntop(ClientAddr.ss_family,sin_addr ,buffer,INET6_ADDRSTRLEN);
 
       printf("got connection from %s\n",buffer);
-      
+      close(ClientSockfd);
   }
-
+  close(sockfd);
 
 
   return 0;

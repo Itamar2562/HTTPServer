@@ -27,10 +27,15 @@ void * getCorrectSinAddress(struct sockaddr* genericAddr)
 
 
 
-void getAddress(char * buffer,socklen_t length, struct sockaddr* addr)
+int getAddress(char * buffer,socklen_t length, struct sockaddr* addr)
 {
   void *correctAddr=getCorrectSinAddress(addr);
-  inet_ntop(addr->sa_family, correctAddr, buffer, length );
+  if ( inet_ntop(addr->sa_family, correctAddr, buffer, length )== NULL)
+  {
+    perror("inet_ntop error");
+    return 0;
+  }
+  return 1;
 }
 
 
@@ -65,7 +70,7 @@ void printAddresses(struct addrinfo* addresses){
 }
 
 
-int getAddrInfo(struct addrinfo** res,char * host,int family, int sockType, int flag){
+void getAddrInfo(struct addrinfo** res,char * host,int family, int sockType, int flag){
     struct addrinfo hints;
     memset(&hints,0, sizeof hints);
     hints.ai_family= family; 
@@ -78,7 +83,6 @@ int getAddrInfo(struct addrinfo** res,char * host,int family, int sockType, int 
         printf("error is %s\n", gai_strerror(status));
         exit(1);
     }
-    return 0;
 }
 
 
@@ -101,8 +105,11 @@ int GetClientSocket(char *host )
         continue;
       }
       char serverIP[INET6_ADDRSTRLEN];
-      getAddress(serverIP,INET6_ADDRSTRLEN,p->ai_addr );
-      printf("attempting to connect to %s\n",serverIP);
+      if (getAddress(serverIP,INET6_ADDRSTRLEN,p->ai_addr ))
+        printf("attempting to connect to %s\n",serverIP);
+      else
+        printf("attempting to connect...\n");
+
       int connectStatus= connect(sockfd, p->ai_addr, p->ai_addrlen);
       if (connectStatus==-1)
       {
@@ -132,7 +139,7 @@ int main(int argc, char *argv[])
 {
     int socketfd=GetClientSocket(argv[1]);
 
-    
+    close(socketfd);
 
       
   

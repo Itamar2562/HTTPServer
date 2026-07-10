@@ -68,6 +68,10 @@ void getAddrInfo(struct addrinfo** res,int family, int sockType, int flag){
     }
 }
 
+void gitMergeCheck(){
+  printf("hello");
+}
+
 
 int GetServerSocket()
 {

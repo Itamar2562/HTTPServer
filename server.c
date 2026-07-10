@@ -9,9 +9,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <poll.h>
 
 
-#define MAXCLIENTS 2
+#define MAX_CLIENTS 2
 #define SERVER_PORT "4556"
 
 
@@ -21,6 +22,26 @@ void printAddressIPV4(struct sockaddr_in* addr)
   inet_ntop(AF_INET, &addr->sin_addr, buffer, INET_ADDRSTRLEN );
   printf("the ip is %s\n",buffer);
 }
+
+
+const char* getPresIpAddr(struct sockaddr* genericAddr, char *buffer, size_t size)
+{
+  void * src;
+  if (genericAddr->sa_family==AF_INET)
+  {
+    src= &((struct sockaddr_in* )genericAddr)->sin_addr;
+  }
+
+  else if (genericAddr->sa_family==AF_INET6){
+      src= &((struct sockaddr_in6* )genericAddr)->sin6_addr;
+  }
+  else
+    return NULL;
+
+  return inet_ntop(genericAddr->sa_family, src, buffer, size);
+  
+}
+
 
 
 void printAddresses(struct addrinfo* addresses){
@@ -73,7 +94,7 @@ void gitMergeCheck(){
 }
 
 
-int GetServerSocket()
+int GetListenerSocket()
 {
   struct addrinfo *res;
   int sockfd=-1;
@@ -89,6 +110,14 @@ int GetServerSocket()
         perror("server socket error: ");
         continue;
       }
+      //makes sure we can reuse port immediatly when we restart server
+      int yes=1;
+      if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,&yes, sizeof(int))==-1)
+      {
+        close(sockfd);
+        perror("setsockop error");
+        return -1;
+      }
 
       int bindStatus=bind(sockfd, p->ai_addr,p->ai_addrlen);
       if (bindStatus==-1){
@@ -100,6 +129,13 @@ int GetServerSocket()
       break; //finished all steps
   }
   freeaddrinfo(res);
+  int Listenstatus= listen(sockfd, MAX_CLIENTS);
+  if (Listenstatus==-1){
+    perror("server listen error");
+    return -1;
+    }
+ 
+   printf("listening for incoming clients..\n");
   return sockfd;
 }
 
@@ -128,45 +164,128 @@ void recvData(int sockfd, char *buffer,size_t length)
 
 }
 
-int main()
+//function gets a ptr to a ptr which is a ptr to an array to 
+//possible change the position of the array based on its size and count
+void addToPfds(struct pollfd** pfds, int newfd, int *fd_count, int *fd_size)
 {
-  int sockfd=GetServerSocket();
-  if (sockfd==-1){
-    exit(1);
+  if (*fd_count== *fd_size)
+  {
+    (*fd_size)*=2;
+    *pfds=realloc(*pfds,sizeof(**pfds) * (*fd_size) );
   }
-  
-  int Listenstatus= listen(sockfd, MAXCLIENTS);
-  if (Listenstatus==-1){
-    perror("server listen error");
-    exit(1);
-  }
- 
-   printf("listening for incoming clients..\n");
-  struct sockaddr_storage ClientAddr;
 
+  (*pfds)[*fd_count].fd=newfd;
+  (*pfds)[*fd_count].events=POLLIN; // check if ready to read
+  (*pfds)[*fd_count].revents =0; //reset
+
+  (*fd_count)++;
+}
+
+void delFromPfds(struct pollfd pollfds[], int i,int *fd_count )
+{
+  pollfds[i]=pollfds[(*fd_count-1)];
+  (*fd_count)--;
+}
+
+
+
+void handleNewConnection(int listener , int *fd_count, int *fd_size, struct pollfd **pollfd)
+{
+  struct sockaddr_storage clientAddr;
+  socklen_t clientAddrLen;
+  int clientFd;
+  char clientIP[INET6_ADDRSTRLEN];
+
+  clientAddrLen=sizeof(clientAddr);
+  clientFd=accept(listener, (struct sockaddr*)&clientAddr, &clientAddrLen);
+  if (clientFd==-1)
+    perror("accept error");
+  else{
+    addToPfds(pollfd, clientFd,fd_count,fd_size);
+
+    printf("new conenction from %s from socket %d\n", 
+      getPresIpAddr((struct sockaddr*)&clientAddr,clientIP, sizeof(clientIP)),clientFd);
+  }
+}
+
+void handleClientData(int listener, int *fd_count, struct pollfd *pfds, int *pfd_i )
+{
+  char buffer[256];
+
+  int clientFd=pfds[*pfd_i].fd;
+  int nbytes=recv(clientFd, buffer, sizeof(buffer), 0);
+
+  if (nbytes<=0) // got a problem
+  {
+    if (nbytes==0) // connection closed
+    {
+      printf("pollserver: socket %d hung up on us :(\n",clientFd);
+    }
+    else
+      perror("recv error");
+
+    close(clientFd);
+    delFromPfds(pfds, *pfd_i, fd_count);
+    (*pfd_i)--; //delete swaps the last with curr so we need to check again this pos
+  }
+  else // got data
+  {
+    printf("pollserver: recv from fd %d: %.*s\n",clientFd, nbytes, buffer);
+     char * response="HTTP/1.1 200 OK\r\n"
+    "Content-Length: 19\r\n"
+    "Content-Type: text/plain\r\n"
+    "Connection: keep-alive\r\n"
+    "\r\n"
+    "<h1>shlominion</h1>";
+        sendData(clientFd, response, strlen(response));
+  }
+
+}
+
+void ProccessConnections(int listener, int *fd_count, int *fd_size,struct pollfd **pfds, int poll_count ){
+  for (int i=0; i<*fd_count && poll_count>0;i++)
+  {
+    if ((*pfds)[i].revents & (POLLIN | POLLHUP)) // we got new data (smg to read or hang up)
+    {
+      if ((*pfds)[i].fd==listener) //the listener has smg to read (a new conn)
+        handleNewConnection(listener, fd_count,fd_size,pfds);
+
+      else
+        handleClientData(listener, fd_count, *pfds,&i);
+      poll_count--;
+    }
+
+  }
+}
+
+
+int main(int argc, int **argv)
+{
+  int sockfd=GetListenerSocket();
+  if (sockfd==-1)
+  {
+    perror("error getting a listener");
+    exit(1);
+  }
+
+  int fd_size=5;
+  int fd_count=1;
+
+  struct pollfd * pfds=(struct pollfd* )malloc(fd_size* sizeof(struct pollfd));
+  pfds[0].fd=sockfd;
+  pfds[0].events=POLLIN;
   while (1)
   {
-      socklen_t ClientAddrLen=sizeof(ClientAddr);
-      int ClientSockfd = accept(sockfd, (struct sockaddr* )&ClientAddr, &ClientAddrLen);
-      if (ClientSockfd==-1)
-      {
-        perror("Connect error");
-        continue;
+      int poll_count=poll(pfds, fd_size, -1);
+      if (poll_count==-1){
+        perror("poll error");
+        exit(1);
       }
-      char buffer[INET6_ADDRSTRLEN];
 
-      void* sin_addr=getCorrectSinAddress((struct sockaddr* )&ClientAddr);
-      inet_ntop(ClientAddr.ss_family,sin_addr ,buffer,INET6_ADDRSTRLEN);
-
-      printf("got connection from %s\n",buffer);
-      char str[100];
-      printf("enter smg to send to client:\n");
-      scanf("%s",str);
-      sendData(ClientSockfd, str,strlen(str));
-      close(ClientSockfd);
+      ProccessConnections(sockfd, &fd_count,&fd_size, &pfds,poll_count);
   }
   close(sockfd);
-
+  free(pfds);
 
   return 0;
 }

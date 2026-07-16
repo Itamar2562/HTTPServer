@@ -7,9 +7,10 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <string.h>
-#include <stdlib.h>
 #include <errno.h>
 #include <poll.h>
+
+#include "serverUtils.h"
 
 
 #define MAX_CLIENTS 2
@@ -155,6 +156,27 @@ void sendData(int sockfd, char *data,size_t length)
   printf("send %d\n",bytesSend);
 }
 
+int sendDataAll(int sockfd, char *data, int* length)
+{
+  int offset=0 ;
+  int bytesSend=0; // offset by how much already send
+  int amountLeft=*length;
+  while(offset<*length)
+  {
+    bytesSend=send(sockfd, data+offset,amountLeft,0);
+    if (bytesSend==-1)
+    {
+      perror("send");
+      break;
+    }
+    offset+=bytesSend;
+    amountLeft-=bytesSend;
+  }
+  *length=offset;
+  return bytesSend==-1 ? -1:0;
+}
+
+
 void recvData(int sockfd, char *buffer,size_t length)
 { 
 
@@ -200,12 +222,30 @@ void handleNewConnection(int listener , int *fd_count, int *fd_size, struct poll
   clientFd=accept(listener, (struct sockaddr*)&clientAddr, &clientAddrLen);
   if (clientFd==-1)
     perror("accept error");
-  else{
+  else
+  {
     addToPfds(pollfd, clientFd,fd_count,fd_size);
-
     printf("new conenction from %s from socket %d\n", 
-      getPresIpAddr((struct sockaddr*)&clientAddr,clientIP, sizeof(clientIP)),clientFd);
+    getPresIpAddr((struct sockaddr*)&clientAddr,clientIP, sizeof(clientIP)),clientFd);
   }
+}
+
+
+char *handleGet()
+{
+  char *body=loadContent("index.html");
+  char *header=buildHTTPHeaders(strlen(body),200);
+  char *buffer=(char *)malloc(strlen(body)+strlen(header)+1);
+  if (buffer==NULL){
+    printf("complete response memory error");
+    return NULL;
+  }
+  strcpy(buffer,header);
+  strcat(buffer,body);
+  free (body);
+  free(header);
+  printf("%s",buffer);
+  return buffer;
 }
 
 void handleClientData(int listener, int *fd_count, struct pollfd *pfds, int *pfd_i )
@@ -230,14 +270,15 @@ void handleClientData(int listener, int *fd_count, struct pollfd *pfds, int *pfd
   }
   else // got data
   {
-    printf("pollserver: recv from fd %d: %.*s\n",clientFd, nbytes, buffer);
-     char * response="HTTP/1.1 200 OK\r\n"
-    "Content-Length: 19\r\n"
-    "Content-Type: text/plain\r\n"
-    "Connection: keep-alive\r\n"
-    "\r\n"
-    "<h1>shlominion</h1>";
-        sendData(clientFd, response, strlen(response));
+    printf("pollserver: recv from fd %d: \n%.*s\n",clientFd, nbytes, buffer);
+    if (strncmp(buffer,"GET / HTTP/1.1",14)==0)
+    {
+      printf("NEW DATA\n\n");
+       char * response=handleGet();
+        int bytesSend=strlen(response);
+        sendDataAll(clientFd, response, &bytesSend);
+    }
+     
   }
 
 }
@@ -245,6 +286,7 @@ void handleClientData(int listener, int *fd_count, struct pollfd *pfds, int *pfd
 void ProccessConnections(int listener, int *fd_count, int *fd_size,struct pollfd **pfds, int poll_count ){
   for (int i=0; i<*fd_count && poll_count>0;i++)
   {
+
     if ((*pfds)[i].revents & (POLLIN | POLLHUP)) // we got new data (smg to read or hang up)
     {
       if ((*pfds)[i].fd==listener) //the listener has smg to read (a new conn)

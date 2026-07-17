@@ -15,7 +15,7 @@ void printAddresses(struct addrinfo* addresses);
 int GetListenerSocket();
 void sendData(int sockfd, char *data,size_t length);
 int sendDataAll(int sockfd, char *data, int* length);
-void recvData(int sockfd, char *buffer,size_t length);
+int  recvHTTPChunk(char **buffer,char **leftData, int *maxLength, int *end);
 
 void addToPfds(struct pollfd** pfds, int newfd, int *fd_count, int *fd_size);
 void delFromPfds(struct pollfd pollfds[], int i,int *fd_count );

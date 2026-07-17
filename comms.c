@@ -172,6 +172,48 @@ void recvData(int sockfd, char *buffer,size_t length)
 
 }
 
+int  recvHTTPChunk(char **buffer,char **leftData, int *maxLength, int *end)
+{ 
+    int length=strlen(*buffer);
+    int leftDataLength=strlen(*leftData);
+    int foundChunk=0;
+    for (int i=0; i<length ; i++)
+    {
+      if ((*buffer)[i]=='\r'&& strncmp(&(*buffer)[i],"\r\n\r\n",4)==0)
+        {
+          (*end)=i+4;
+          foundChunk=1;
+          break;
+        }
+    }
+  if (leftDataLength+length+1>=*maxLength)
+  {
+    (*maxLength)*=2;
+    char *temp1=realloc(*leftData, *maxLength);
+    char *temp2=realloc(*buffer, *maxLength);
+    if (temp1!=NULL && temp2!=NULL)
+    {
+       (*leftData)= temp1;
+       (*buffer) = temp2;
+    }
+    else
+      return 0;  
+  }
+
+  strcat(*leftData , *buffer); // add buffer to the prev left data
+  strcpy(*buffer,*leftData); //copy the complete data back
+  strncpy(*leftData, &(*buffer)[*end], length- (*end)); // copy the rest back to next time
+  (*leftData)[length- (*end)]='\0';
+  if (foundChunk)
+    (*buffer)[leftDataLength+(*end)]='\0'; // might not need this at all but ill keep for now
+  else  
+     (*buffer)[0]='\0';
+  printf("%s\n",*buffer);
+  return foundChunk;
+}
+
+
+
 //function gets a ptr to a ptr which is a ptr to an array to 
 //possible change the position of the array based on its size and count
 void addToPfds(struct pollfd** pfds, int newfd, int *fd_count, int *fd_size)
@@ -215,3 +257,4 @@ void handleNewConnection(int listener , int *fd_count, int *fd_size, struct poll
     getPresIpAddr((struct sockaddr*)&clientAddr,clientIP, sizeof(clientIP)),clientFd);
   }
 }
+

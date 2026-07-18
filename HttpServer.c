@@ -6,9 +6,10 @@
 #include <errno.h>
 
 #include "serverUtils.h"
-#include "commsUtils.h"
+#include "CommsUtils/commsUtils.h"
+#include "PfdsUtils/pfdUtils.h"
 
-#define MAX_CHUNK_LENGTH 300
+#define MAX_CHUNK_LENGTH 3
 
 
 void route(char *buffer)
@@ -88,7 +89,7 @@ void handleClientData(int listener, int *fd_count, struct pollfd *pfds, int *pfd
   {
     printf("pollserver: recv from fd %d: \n%s\n",clientFd, buffer);
     
-    if (strncmp(buffer,"GET / HTTP/1.1",14)==0)
+    if (strncmp(header,"GET / HTTP/1.1",14)==0)
       {
         printf("NEW DATA\n\n");
           char * response=handleGet();
@@ -97,6 +98,7 @@ void handleClientData(int listener, int *fd_count, struct pollfd *pfds, int *pfd
       }
   }
     free(buffer);
+    free(header);
 }
 
 void ProccessConnections(int listener, int *fd_count, int *fd_size,struct pollfd **pfds, int poll_count){

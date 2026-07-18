@@ -8,6 +8,7 @@
 #include "serverUtils.h"
 #include "CommsUtils/commsUtils.h"
 #include "PfdsUtils/pfdUtils.h"
+#include "ClientUtils/clientUtils.h"
 
 #define MAX_CHUNK_LENGTH 3
 
@@ -33,7 +34,6 @@ char *handleGet()
   strcat(buffer,body);
   free (body);
   free(header);
-  printf("%s",buffer);
   return buffer;
 }
 
@@ -67,52 +67,55 @@ char *getChunk(int clientFd, char **buffer,int *maxLength , int *currLength)
   return header;
 }
 
-void handleClientData(int listener, int *fd_count, struct pollfd *pfds, int *pfd_i)
+void handleClientData(int listener, int *curr_count, struct pollfd *pfds,client *clients, int *index)
 {
-  int chunkMaxLength=MAX_CHUNK_LENGTH;
-  char *buffer=(char *)malloc(sizeof(char) *chunkMaxLength);
+ 
+  int clientFd=pfds[*index].fd;
 
-
-  int clientFd=pfds[*pfd_i].fd;
-
-  int currLength=0;
-
-  char *header=getChunk(clientFd, &buffer, &chunkMaxLength, &currLength);
+  char *header=getChunk(clientFd, &clients[*index].buffer, &clients[*index].chunkMaxLength, &clients[*index].chunkCurrLength);
   if (header==NULL)
   {
       close(clientFd);
-      delFromPfds(pfds, *pfd_i, fd_count);
-      (*pfd_i)--; //delete swaps the last with curr so we need to check again this pos
+      delFromPfds(pfds, *index, *curr_count);
+      delFromClients(clients,*index, *curr_count );
+      (*index)--; //delete swaps the last with curr so we need to check again this pos
+      (*curr_count)--;
   }
   
   else
   {
-    printf("pollserver: recv from fd %d: \n%s\n",clientFd, buffer);
+    printf("pollserver: recv from fd %d: \n%s\n",clientFd, header);
     
     if (strncmp(header,"GET / HTTP/1.1",14)==0)
       {
-        printf("NEW DATA\n\n");
           char * response=handleGet();
           int bytesSend=strlen(response);
+          printf("\nsending to clientFd: %d msg\n %s\n",clientFd,response);
           sendDataAll(clientFd, response, &bytesSend);
       }
   }
-    free(buffer);
     free(header);
 }
 
-void ProccessConnections(int listener, int *fd_count, int *fd_size,struct pollfd **pfds, int poll_count){
-  for (int i=0; i<*fd_count && poll_count>0;i++)
+void ProccessConnections(int listener, int *curr_count, int *max_size,struct pollfd **pfds, client **clients){
+  for (int i=0; i<*curr_count;i++)
   {
 
     if ((*pfds)[i].revents & (POLLIN | POLLHUP)) // we got new data (smg to read or hang up)
     {
       if ((*pfds)[i].fd==listener) //the listener has smg to read (a new conn)
-        handleNewConnection(listener, fd_count,fd_size,pfds);
+        {
+          int clientFd=handleNewConnection(listener, *curr_count,max_size,pfds); 
+          if (clientFd!=-1) // check if accept worked
+          {
+            addToClients(clients, clientFd, *curr_count, max_size);
+            initializeClient(*clients, *curr_count);
+            (*curr_count)++;
+          }
+        }
 
       else
-        handleClientData(listener, fd_count, *pfds,&i);
-      poll_count--;
+        handleClientData(listener, curr_count, *pfds,*clients,&i);
     }
 
   }
@@ -128,25 +131,27 @@ int main(int argc, int **argv)
     exit(1);
   }
 
-  int fd_size=5;
-  int fd_count=1;
+  int max_size=5;
+  int curr_count=1;
 
-  struct pollfd * pfds=(struct pollfd* )malloc(fd_size* sizeof(struct pollfd));
+  struct pollfd * pfds=(struct pollfd* )malloc(max_size* sizeof(struct pollfd));
+  client *clients = (client *)malloc(max_size * sizeof(client));
   pfds[0].fd=sockfd;
   pfds[0].events=POLLIN;
 
   while (1)
   {
-      int poll_count=poll(pfds, fd_size, -1);
+      int poll_count=poll(pfds, max_size, -1);
       if (poll_count==-1){
         perror("poll error");
         exit(1);
       }
 
-      ProccessConnections(sockfd, &fd_count,&fd_size, &pfds,poll_count);
+      ProccessConnections(sockfd, &curr_count,&max_size, &pfds, &clients);
   }
   close(sockfd);
   free(pfds);
+  freeClients(clients, curr_count);
 
   return 0;
 }

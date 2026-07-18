@@ -208,14 +208,13 @@ char* recvHTTPChunk(char **buffer,int *maxLength, int *currLength)
     memcpy(*buffer, (*buffer)+chunkEnd, rest);
     (*currLength)=rest;
     (*buffer)[rest]='\0';
-    printf("%s\n",header);
   }
   return header;
 }
 
 
 
-void handleNewConnection(int listener , int *fd_count, int *fd_size, struct pollfd **pollfd)
+int handleNewConnection(int listener , int fd_count, int *fd_size, struct pollfd **pollfd)
 {
   struct sockaddr_storage clientAddr;
   socklen_t clientAddrLen;
@@ -225,12 +224,16 @@ void handleNewConnection(int listener , int *fd_count, int *fd_size, struct poll
   clientAddrLen=sizeof(clientAddr);
   clientFd=accept(listener, (struct sockaddr*)&clientAddr, &clientAddrLen);
   if (clientFd==-1)
-    perror("accept error");
+  {
+      perror("accept error");
+      return 0;
+  }
   else
   {
-    addToPfds(pollfd, clientFd,fd_count,fd_size);
+    addToPfds(pollfd, clientFd, fd_count,fd_size);
     printf("new conenction from %s from socket %d\n", 
     getPresIpAddr((struct sockaddr*)&clientAddr,clientIP, sizeof(clientIP)),clientFd);
+    return 1;
   }
 }
 

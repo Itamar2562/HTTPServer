@@ -8,7 +8,7 @@
 #include "serverUtils.h"
 #include "commsUtils.h"
 
-#define MAX_CHUNK_LENGTH 256
+#define MAX_CHUNK_LENGTH 300
 
 
 void route(char *buffer)
@@ -37,34 +37,36 @@ char *handleGet()
 }
 
 
-int getChunk(int clientFd, char **buffer, char **dataLeft , int *maxLength)
+char *getChunk(int clientFd, char **buffer,int *maxLength , int *currLength)
 {
   int gotChunk=0;
   int end=0;
-
+  char *header=NULL;
   while(!gotChunk)
   { 
-    int nbytes=recv(clientFd, *buffer,*maxLength-1,0);
-    (*buffer)[nbytes]='\0';
+    int remainingSpace=*maxLength-*currLength;
+    int nbytes=recv(clientFd, (*buffer)+ (*currLength),remainingSpace-1,0);
+    (*currLength) +=nbytes;
+    (*buffer)[*currLength]='\0';
     if (nbytes<=0) // got a problem
     {
       if (nbytes==0) // connection closed
       {
         printf("pollserver: socket %d hung up on us :(\n",clientFd);
-        return 0;
       }
-      else{
+      else
           perror("recv");
-          return -1;
-      }
+      break;
     }
 
-    gotChunk=recvHTTPChunk(buffer,dataLeft, maxLength, &end);
+    header=recvHTTPChunk(buffer,maxLength, currLength);
+    if (header!=NULL)
+      gotChunk=1;
   }
-  return 1;
+  return header;
 }
 
-void handleClientData(int listener, int *fd_count, struct pollfd *pfds, int *pfd_i, char **dataLeft )
+void handleClientData(int listener, int *fd_count, struct pollfd *pfds, int *pfd_i)
 {
   int chunkMaxLength=MAX_CHUNK_LENGTH;
   char *buffer=(char *)malloc(sizeof(char) *chunkMaxLength);
@@ -72,11 +74,10 @@ void handleClientData(int listener, int *fd_count, struct pollfd *pfds, int *pfd
 
   int clientFd=pfds[*pfd_i].fd;
 
-  int end=0;
-  int gotChunk=0;
+  int currLength=0;
 
-  int status=getChunk(clientFd, &buffer, dataLeft,&chunkMaxLength);
-  if (status<=0)
+  char *header=getChunk(clientFd, &buffer, &chunkMaxLength, &currLength);
+  if (header==NULL)
   {
       close(clientFd);
       delFromPfds(pfds, *pfd_i, fd_count);
@@ -98,7 +99,7 @@ void handleClientData(int listener, int *fd_count, struct pollfd *pfds, int *pfd
     free(buffer);
 }
 
-void ProccessConnections(int listener, int *fd_count, int *fd_size,struct pollfd **pfds, int poll_count, char **dataLeft){
+void ProccessConnections(int listener, int *fd_count, int *fd_size,struct pollfd **pfds, int poll_count){
   for (int i=0; i<*fd_count && poll_count>0;i++)
   {
 
@@ -108,7 +109,7 @@ void ProccessConnections(int listener, int *fd_count, int *fd_size,struct pollfd
         handleNewConnection(listener, fd_count,fd_size,pfds);
 
       else
-        handleClientData(listener, fd_count, *pfds,&i ,dataLeft);
+        handleClientData(listener, fd_count, *pfds,&i);
       poll_count--;
     }
 
@@ -132,8 +133,6 @@ int main(int argc, int **argv)
   pfds[0].fd=sockfd;
   pfds[0].events=POLLIN;
 
-  char *dataLeft=(char *)malloc(sizeof(char) *MAX_CHUNK_LENGTH);
-  dataLeft[0]='\0';
   while (1)
   {
       int poll_count=poll(pfds, fd_size, -1);
@@ -142,11 +141,10 @@ int main(int argc, int **argv)
         exit(1);
       }
 
-      ProccessConnections(sockfd, &fd_count,&fd_size, &pfds,poll_count,&dataLeft);
+      ProccessConnections(sockfd, &fd_count,&fd_size, &pfds,poll_count);
   }
   close(sockfd);
   free(pfds);
-  free(dataLeft);
 
   return 0;
 }

@@ -172,44 +172,43 @@ void recvData(int sockfd, char *buffer,size_t length)
 
 }
 
-int  recvHTTPChunk(char **buffer,char **leftData, int *maxLength, int *end)
+char* recvHTTPChunk(char **buffer,int *maxLength, int *currLength)
 { 
-    int length=strlen(*buffer);
-    int leftDataLength=strlen(*leftData);
     int foundChunk=0;
-    for (int i=0; i<length ; i++)
+    int chunkEnd=0;
+    for (int i=0; i<*currLength ; i++)
     {
       if ((*buffer)[i]=='\r'&& strncmp(&(*buffer)[i],"\r\n\r\n",4)==0)
         {
-          (*end)=i+4;
+          chunkEnd=i+4;
           foundChunk=1;
           break;
         }
     }
-  if (leftDataLength+length+1>=*maxLength)
+  if (*currLength+1>=*maxLength)
   {
     (*maxLength)*=2;
-    char *temp1=realloc(*leftData, *maxLength);
-    char *temp2=realloc(*buffer, *maxLength);
-    if (temp1!=NULL && temp2!=NULL)
+    char *temp=realloc(*buffer, *maxLength);
+    if (temp!=NULL)
     {
-       (*leftData)= temp1;
-       (*buffer) = temp2;
+       (*buffer) = temp;
     }
     else
-      return 0;  
+      return NULL;  
   }
-
-  strcat(*leftData , *buffer); // add buffer to the prev left data
-  strcpy(*buffer,*leftData); //copy the complete data back
-  strncpy(*leftData, &(*buffer)[*end], length- (*end)); // copy the rest back to next time
-  (*leftData)[length- (*end)]='\0';
-  if (foundChunk)
-    (*buffer)[leftDataLength+(*end)]='\0'; // might not need this at all but ill keep for now
-  else  
-     (*buffer)[0]='\0';
-  printf("%s\n",*buffer);
-  return foundChunk;
+  char *header=NULL;
+  
+  if (foundChunk){
+    int rest=*currLength - chunkEnd;
+    header=(char *)malloc(chunkEnd+1);
+    strncpy(header, *buffer, chunkEnd);
+    header[chunkEnd]='\0';
+    memcpy(*buffer, (*buffer)+chunkEnd, rest);
+    (*currLength)=rest;
+    (*buffer)[rest]='\0';
+    printf("%s\n",header);
+  }
+  return header;
 }
 
 

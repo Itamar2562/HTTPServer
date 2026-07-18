@@ -1,0 +1,25 @@
+#include "pfdHandler/PfdUtils.h"
+#include "ClientUtils/clientUtils.h"
+
+#define MAX_BUFFER_CHUNK_SIZE 256
+
+
+void delFromClients(client **clients, int i,int *clientAmount )
+{
+  clients[i]=clients[(*clientAmount-1)];
+  (*clientAmount)--;
+}
+
+int addToClients(client **clients,int clientFd,int *clients_count,int *clients_size)
+{
+    if (*clients_count>= *clients_size)
+  {
+    (*clients_size)*=2;
+    *clients=realloc(*clients,sizeof(**clients) * (*clients_size) );
+  }
+
+  initializePfd((*clients)[*clients_count].pfd, clientFd, clients_count);
+  (*clients)[*clients_count].chunkMaxLength=MAX_BUFFER_CHUNK_SIZE; 
+  (*clients)[*clients_count].buffer =(char *)malloc(MAX_BUFFER_CHUNK_SIZE); 
+  (*clients_count)++;
+}

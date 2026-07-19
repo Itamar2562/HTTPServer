@@ -6,6 +6,7 @@
 
 void delFromClients(client *clients, int i,int client_count )
 {
+  free(clients[i].buffer);
   clients[i]=clients[(client_count-1)];
 }
 

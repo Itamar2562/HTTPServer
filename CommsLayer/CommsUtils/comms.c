@@ -174,7 +174,7 @@ void recvData(int sockfd, char *buffer,size_t length)
 
 }
 
-char* recvHTTPChunk(char **buffer,int *maxLength, int *currLength)
+char* getHTTPChunk(char **buffer,int *maxLength, int *currLength)
 { 
     int foundChunk=0;
     int chunkEnd=0;

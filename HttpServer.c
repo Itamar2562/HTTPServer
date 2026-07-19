@@ -5,25 +5,31 @@
 #include <string.h>
 #include <errno.h>
 
-#include "serverUtils.h"
-#include "CommsUtils/commsUtils.h"
-#include "PfdsUtils/pfdUtils.h"
-#include "ClientUtils/clientUtils.h"
 
-#define MAX_CHUNK_LENGTH 3
+#include "CommsLayer/CommsUtils/commsUtils.h"
+#include "CommsLayer/PfdsUtils/pfdUtils.h"
+
+#include "ClientManagmentLayer/clientUtils.h"
 
 
-void route(char *buffer)
+#include "HttpLayer/HttpResponse/HttpResponse.h"
+
+
+#include "ContentLayer/contentUtils.h"
+
+
+
+char* getHeaderAction(char *header,char *buffer, size_t maxLength)
 {
-  if (strncmp(buffer,"GET / HTTP/1.1",14)==0);
-
+  for (size_t i=0; i<maxLength && header[i]!=' '; i++)
+    buffer[i]=header[i];
 }
 
 
 
 char *handleGet()
 {
-  char *body=loadContent("index.html");
+  char *body=loadContent("ContentLayer/content/index.html");
   char *header=buildHTTPHeaders(strlen(body),200);
   char *buffer=(char *)malloc(strlen(body)+strlen(header)+1);
   if (buffer==NULL){
@@ -60,7 +66,7 @@ char *getChunk(int clientFd, char **buffer,int *maxLength , int *currLength)
       break;
     }
 
-    header=recvHTTPChunk(buffer,maxLength, currLength);
+    header=getHTTPChunk(buffer,maxLength, currLength);
     if (header!=NULL)
       gotChunk=1;
   }
@@ -90,6 +96,17 @@ void handleClientData(int listener, int *curr_count, struct pollfd *pfds,client 
       {
           char * response=handleGet();
           int bytesSend=strlen(response);
+          printf("\n");
+          for (int i=0;i<strlen(header);i++)
+          {
+            if (header[i]=='\r')
+              printf("\\r");
+            else if (header[i]=='\n')
+              printf("\\n");
+            else
+                printf("%c",header[i]);
+
+          }
           printf("\nsending to clientFd: %d msg\n %s\n",clientFd,response);
           sendDataAll(clientFd, response, &bytesSend);
       }

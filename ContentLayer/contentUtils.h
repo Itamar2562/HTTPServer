@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 
-char *buildHTTPHeaders(size_t contentLength, int statusCode);
+
 char* loadContent(char *name);
 
 

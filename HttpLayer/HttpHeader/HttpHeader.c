@@ -28,7 +28,7 @@ int initializeHeaderList(headerList *h)
 }
 
 
-char *getStatusHeader(int statusCode)
+const char *getStatusHeader(int statusCode)
 {
     char *status;
     switch(statusCode)
@@ -46,6 +46,19 @@ char *getStatusHeader(int statusCode)
     return status;
 }
 
+void removeCLRF(headerList *headerList)
+{
+    header *h=&headerList->headers[headerList->count-1];
+    h->value[strlen(h->value)-2]='\0';
+    headerList->total_byte_length-=2;
+}
+
+void addCLRF(headerList *headerList)
+{
+    header *h=&headerList->headers[headerList->count-1];
+    strcat(h->value,"\r\n");
+    headerList->total_byte_length+=2;
+}
 
 void addHeader(headerList *headerList, const char *key, const char *value)
 {
@@ -60,11 +73,12 @@ void addHeader(headerList *headerList, const char *key, const char *value)
         }
         headerList->headers=temp;
     }
-
+    if (headerList->count>0)
+        removeCLRF(headerList);
     header *h= &headerList->headers[headerList->count];
     
     size_t keyLength=strlen(key);
-    size_t valueLength = strlen(value);
+    size_t valueLength = strlen(value)+4;
 
     (*h).key = (char *)malloc(keyLength+1 );
     (*h).value = (char *)malloc(valueLength+1);
@@ -76,12 +90,13 @@ void addHeader(headerList *headerList, const char *key, const char *value)
         }
     strcpy((*h).key, key);
     strcpy((*h).value,value);
+    strcat((*h).value,"\r\n\r\n");
 
     (*h).key[keyLength]='\0';
     (*h).value[valueLength]='\0';
 
     headerList->count++;
-    headerList->total_byte_length+=strlen(key)+strlen(value);
+    headerList->total_byte_length+=keyLength+valueLength;
 }
 
 int RemoveHeader(headerList *headerList, const char *key)
@@ -94,6 +109,8 @@ int RemoveHeader(headerList *headerList, const char *key)
             freeHeader(&headerList->headers[i]);
             headerList->headers[i]=headerList->headers[headerList->count-1];
             headerList->count--;
+            if (i==headerList->count)
+                addCLRF(headerList); // dont forget to add missing /r/n in the last place
             return 1;
         }
     }
@@ -102,35 +119,28 @@ int RemoveHeader(headerList *headerList, const char *key)
 
 
 
-char *buildHTTPHeaders(size_t contentLength, int statusCode)
+char *buildHTTPHeaders(headerList *hl)
 {
-    char *status=getStatusHeader(statusCode);
+    char *completeHeader= (char *)malloc(hl->total_byte_length+1);
+    completeHeader[0]='\0';
+    for (int i=0; i<hl->count; i++)
+    {
+        strcat(completeHeader, hl->headers[i].key);
+        strcat(completeHeader, hl->headers[i].value);
 
-    int bytesNeeded= snprintf(NULL,0,
-    "HTTP/1.1 %s\r\n"
-    "Content-Length: %zu\r\n"
-    "Content-Type: text/html\r\n"
-    "Connection: keep-alive\r\n\r\n",status,contentLength);
-
-    char *headerBuffer = (char *)malloc(sizeof(char) *bytesNeeded+1);
-    if (headerBuffer==NULL)
-        {
-            printf("header buffer memory error");
-            return NULL;
-        }
-    snprintf(headerBuffer,bytesNeeded+1,
-    "HTTP/1.1 %s\r\n"
-    "Content-Length: %zu\r\n"
-    "Content-Type: text/html\r\n"
-    "Connection: keep-alive\r\n\r\n",status,contentLength);
-    return headerBuffer;
+    }
+    return completeHeader;
 }
 
 void printHeaders(headerList *headerList)
 {
     printf("the total size is: %zu\n", headerList->total_byte_length);
     for (int i=0; i<headerList->count;i++)
-    {
-        printf("key: %s\nvalue: %s\n", headerList->headers[i].key, headerList->headers[i].value);
+    {   
+        char *key= headerList->headers[i].key;
+        char *value= headerList->headers[i].value;
+        printf("key %s\n",key);
+        printf("value %s\n",value);
+
     }
 }

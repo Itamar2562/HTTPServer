@@ -4,7 +4,7 @@
 
 
 
-char* loadContent(char *name)
+char* loadContent(const char *name)
 {   
     int startingLength=10;
     FILE *f=fopen(name,"r");

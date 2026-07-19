@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 
-char* loadContent(char *name);
+char* loadContent(const char *name);
 
 
 

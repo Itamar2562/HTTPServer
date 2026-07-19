@@ -21,3 +21,8 @@ typedef struct
 
 int initializeHeaderList(headerList *headers);
 void freeHeaderList(headerList *hl);
+void addHeader(headerList *headerList, const char *key, const char *value);
+int RemoveHeader(headerList *headerList, const char *key);
+char *buildHTTPHeader(headerList *hl);
+const char *getStatusHeader(int statusCode);
+

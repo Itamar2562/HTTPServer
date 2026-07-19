@@ -7,16 +7,15 @@
 
 typedef struct 
 {
-    char *status_code;
-    
+    int statusCode;
     headerList *headers;
 
     size_t body_length;
     char *body;
+
 }  httpResponse;
 
 
-char *buildHTTPHeaders(size_t contentLength, int statusCode);
 int initializeHttpResponse(httpResponse * response);
 void freeHttpResponse(httpResponse *response);
 

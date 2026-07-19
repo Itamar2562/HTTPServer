@@ -13,35 +13,40 @@
 
 
 #include "HttpLayer/HttpResponse/HttpResponse.h"
+#include "HttpLayer/HttpHeader/HttpHeader.h"
 
 
 #include "ContentLayer/contentUtils.h"
 
 
 
-char* getHeaderAction(char *header,char *buffer, size_t maxLength)
+char* getHttpAction(char *header,char *buffer, size_t maxLength)
 {
-  for (size_t i=0; i<maxLength && header[i]!=' '; i++)
+  size_t i=0;
+  for (i=0; i<maxLength-1 && header[i]!=' '; i++)
     buffer[i]=header[i];
+  buffer[i]='\0';
 }
 
-
-
-char *handleGet()
+void routeHttpRequest(char *header)
 {
-  char *body=loadContent("ContentLayer/content/index.html");
-  char *header=buildHTTPHeaders(strlen(body),200);
-  char *buffer=(char *)malloc(strlen(body)+strlen(header)+1);
-  if (buffer==NULL){
-    printf("complete response memory error");
-    return NULL;
+  size_t maxLength=24;
+  char action[maxLength];
+  getHttpAction(header, action, maxLength);
+
+  httpResponse *response = (httpResponse *) malloc( sizeof(httpResponse));
+  initializeHttpResponse(response);
+
+  if (strcmp(action,"GET")==0)
+  {
+    ;
   }
-  strcpy(buffer,header);
-  strcat(buffer,body);
-  free (body);
-  free(header);
-  return buffer;
+  else;
 }
+
+
+
+
 
 
 char *getChunk(int clientFd, char **buffer,int *maxLength , int *currLength)
@@ -92,23 +97,15 @@ void handleClientData(int listener, int *curr_count, struct pollfd *pfds,client 
   {
     printf("pollserver: recv from fd %d: \n%s\n",clientFd, header);
     
-    if (strncmp(header,"GET / HTTP/1.1",14)==0)
-      {
-          char * response=handleGet();
-          int bytesSend=strlen(response);
-          printf("\n");
-          for (int i=0;i<strlen(header);i++)
-          {
-            if (header[i]=='\r')
-              printf("\\r");
-            else if (header[i]=='\n')
-              printf("\\n");
-            else
-                printf("%c",header[i]);
-
-          }
-          printf("\nsending to clientFd: %d msg\n %s\n",clientFd,response);
-          sendDataAll(clientFd, response, &bytesSend);
+      if (strncmp(header,"GET / HTTP/1.1",14)==0)
+        {
+          routeHttpRequest(header);
+            // char * response=handleGet();
+            // if (response==NULL)
+            //   return;
+            // int bytesSend=strlen(response);
+            // printf("\nsending to clientFd: %d msg\n %s\n",clientFd,response);
+            // sendDataAll(clientFd, response, &bytesSend);
       }
   }
     free(header);

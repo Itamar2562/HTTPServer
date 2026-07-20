@@ -8,7 +8,11 @@ void addToPfds(struct pollfd** pfds, int newfd, int fd_count, int *fd_size)
   if (fd_count== *fd_size)
   {
     (*fd_size)*=2;
-    *pfds=realloc(*pfds,sizeof(**pfds) * (*fd_size) );
+    struct pollfd *temp=realloc(*pfds,sizeof(**pfds) * (*fd_size) );
+    if (temp == NULL)
+      return;
+    else
+      *pfds=temp;
   }
 
   (*pfds)[fd_count].fd=newfd;

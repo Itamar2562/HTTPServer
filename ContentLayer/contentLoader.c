@@ -62,7 +62,7 @@ Content *loadContent(const char *filePath)
         return c;
 
     long length=getFileSize(f);
-    if (length<0 || (size_t)length==SIZE_MAX )
+    if (length<0 || (unsigned long)length>=SIZE_MAX )
         return NULL;
 
     c->data= (char *)malloc(sizeof(char)*length +1); //+1 for null \0

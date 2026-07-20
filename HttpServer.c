@@ -24,9 +24,12 @@
 int getHttpAction(char *headers,char *buffer, size_t maxLength)
 {
   size_t i=0;
-  size_t length=strcspn(headers, " "); //get the length until the second space
+  size_t length=strcspn(headers, " "); //get the length until the first space
   if (length>=maxLength)
+  {
+    fprintf(stderr, "Http action buffer overflow\n");
     return 0;
+  }
   memcpy(buffer,headers, length);
   buffer[length]='\0';
   return 1;
@@ -38,27 +41,34 @@ char *buildCompleteResponse(httpResponse *r)
   size_t responseLength=r->headersList->total_byte_length + r->body_length;
   char *fullResponse =(char *)malloc(responseLength + 1 );
 
-  strcpy(fullResponse, responseHeaders);
-  strcat(fullResponse, r->body);
+  if (responseHeaders==NULL || fullResponse ==NULL)
+    return NULL;
+
+  memcpy(fullResponse, responseHeaders, r->headersList->total_byte_length);
+  memcpy(fullResponse +r->headersList->total_byte_length, r->body , r->body_length);
+
+  free(responseHeaders);
   return fullResponse;
 }
 
 httpResponse* routeHttpRequest(char *headers)
 {
+  httpResponse *response = (httpResponse *) malloc( sizeof(httpResponse));
+  if (response ==NULL)
+    return NULL;
+
+  if (initializeHttpResponse(response) ==0)
+    return NULL;
+
   size_t maxLength=24;
   char action[maxLength];
   if (getHttpAction(headers, action, maxLength)==0 )
     return NULL;
-  if (action==NULL)
-    return NULL;
-  httpResponse *response = (httpResponse *) malloc( sizeof(httpResponse));
-  initializeHttpResponse(response);
 
   if (strcmp(action,"GET")==0)
   {
-    int status = GETResponse(response,headers);
-    if (!status)  
-      return NULL;
+    if (GETResponse(response,headers) == 0)
+       return NULL;
   }
   else;
 
@@ -69,9 +79,9 @@ httpResponse* routeHttpRequest(char *headers)
 void SendHttpResponse(int clientFd, httpResponse *response)
 {
   char *fullResponse=buildCompleteResponse(response);
-  size_t length=strlen(fullResponse);
-  sendDataAll(clientFd, fullResponse, &length);
-  printf("\nsending to clientFd: %d msg\n %s\n",clientFd,fullResponse);
+  size_t length=response->body_length + response->headersList->total_byte_length;
+  if (sendDataAll(clientFd, fullResponse, length) >0)
+    printf("\nsending to clientFd: %d msg\n %s\n",clientFd,fullResponse);
 
   free(fullResponse);
   freeHttpResponse(response);

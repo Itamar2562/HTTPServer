@@ -13,7 +13,7 @@ void printAddresses(struct addrinfo* addresses);
 
 int GetListenerSocket();
 void sendData(int sockfd, char *data,size_t length);
-int sendDataAll(int sockfd, char *data, size_t* length);
+int sendDataAll(int sockfd, char *data, size_t length);
 char* getHTTPChunk(char **buffer,int *maxLength, int *currLength);
 
 int handleNewConnection(int listener , int fd_count, int *fd_size, struct pollfd **pollfd);

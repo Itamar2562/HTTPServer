@@ -122,13 +122,21 @@ int RemoveHeader(headerList *headerList, const char *key)
 char *buildHTTPHeaders(headerList *hl)
 {
     char *completeHeader= (char *)malloc(hl->total_byte_length+1);
-    completeHeader[0]='\0';
+    if (completeHeader ==NULL)
+        return NULL;
+    char *current=completeHeader;
     for (int i=0; i<hl->count; i++)
     {
-        strcat(completeHeader, hl->headers[i].key);
-        strcat(completeHeader, hl->headers[i].value);
+        size_t keyLength=strlen(hl->headers[i].key);
+        memcpy(current, hl->headers[i].key, keyLength);
+        current+=keyLength;
+
+        size_t ValueLength=strlen(hl->headers[i].value);
+        memcpy(current, hl->headers[i].value, ValueLength);
+        current+=ValueLength;
 
     }
+    (*current)='\0';
     return completeHeader;
 }
 

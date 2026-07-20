@@ -144,12 +144,12 @@ void sendData(int sockfd, char *data,size_t length)
   printf("send %d\n",bytesSend);
 }
 
-int sendDataAll(int sockfd, char *data, size_t* length)
+int sendDataAll(int sockfd, char *data, size_t length)
 {
   size_t offset=0 ;
   size_t bytesSend=0; // offset by how much already send
-  size_t amountLeft=*length;
-  while(offset<*length)
+  size_t amountLeft=length;
+  while(offset<length)
   {
     bytesSend=send(sockfd, data+offset,amountLeft,0);
     if (bytesSend==-1)
@@ -160,8 +160,7 @@ int sendDataAll(int sockfd, char *data, size_t* length)
     offset+=bytesSend;
     amountLeft-=bytesSend;
   }
-  *length=offset;
-  return bytesSend==-1 ? -1:0;
+  return bytesSend;
 }
 
 
@@ -203,6 +202,8 @@ char* getHTTPChunk(char **buffer,int *maxLength, int *currLength)
   if (foundChunk){
     int rest=*currLength - chunkEnd;
     header=(char *)malloc(chunkEnd+1);
+    if (header==NULL)
+      return NULL;
     strncpy(header, *buffer, chunkEnd);
     header[chunkEnd]='\0';
     memcpy(*buffer, (*buffer)+chunkEnd, rest);

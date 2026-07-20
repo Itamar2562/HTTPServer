@@ -1,13 +1,22 @@
-#ifndef SERVER_UTILS_H
-#define SERVER_UTILS_H
-
+#pragma once
 #include <stdlib.h>
 
+#define FILE_PATH_START "ContentLayer/content/"
 
-char* loadContent(const char *name);
+typedef struct 
+{
+    char *data;
+    size_t data_size;
+
+    const char *type;
+    int exists;
+} Content;
+
+
+Content *loadContent(const char *filePath);
+void freeContent(Content *c);
 
 
 
 
 
-#endif

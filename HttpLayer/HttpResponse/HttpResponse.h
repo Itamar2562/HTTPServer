@@ -8,7 +8,7 @@
 typedef struct 
 {
     int statusCode;
-    headerList *headers;
+    headerList *headersList;
 
     size_t body_length;
     char *body;

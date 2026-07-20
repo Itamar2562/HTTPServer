@@ -1,5 +1,4 @@
-#ifndef COMMS_UTILS_H
-#define COMMS_UTILS_H
+#pragma once
 
 #define _POSIX_C_SOURCE 200112L
 #include <sys/socket.h>
@@ -14,12 +13,11 @@ void printAddresses(struct addrinfo* addresses);
 
 int GetListenerSocket();
 void sendData(int sockfd, char *data,size_t length);
-int sendDataAll(int sockfd, char *data, int* length);
+int sendDataAll(int sockfd, char *data, size_t* length);
 char* getHTTPChunk(char **buffer,int *maxLength, int *currLength);
 
 int handleNewConnection(int listener , int fd_count, int *fd_size, struct pollfd **pollfd);
 
 
 
-#endif
 

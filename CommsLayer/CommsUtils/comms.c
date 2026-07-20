@@ -144,11 +144,11 @@ void sendData(int sockfd, char *data,size_t length)
   printf("send %d\n",bytesSend);
 }
 
-int sendDataAll(int sockfd, char *data, int* length)
+int sendDataAll(int sockfd, char *data, size_t* length)
 {
-  int offset=0 ;
-  int bytesSend=0; // offset by how much already send
-  int amountLeft=*length;
+  size_t offset=0 ;
+  size_t bytesSend=0; // offset by how much already send
+  size_t amountLeft=*length;
   while(offset<*length)
   {
     bytesSend=send(sockfd, data+offset,amountLeft,0);

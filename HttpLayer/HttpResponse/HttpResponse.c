@@ -6,15 +6,18 @@ int initializeHttpResponse(httpResponse * response)
     response->statusCode=200;
     response->body_length=0;
     response->body=NULL;
-    initializeHeaderList(response->headers);
+    response->headersList=(headerList *)malloc(sizeof(headerList));
+    if (response->headersList ==NULL)
+        return 0;
+    int innerStatus= initializeHeaderList(response->headersList);
 
-    return  response->headers!=NULL ?  1 : 0;
+    return innerStatus;
 }
 
 
 void freeHttpResponse(httpResponse *response)
 {
-    freeHeaderList(response->headers);
+    freeHeaderList(response->headersList);
     free(response);
 }
 

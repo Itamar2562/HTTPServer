@@ -37,7 +37,7 @@ int getHttpAction(char *headers,char *buffer, size_t maxLength)
 
 char *buildCompleteResponse(httpResponse *r)
 {
-  char *responseHeaders=buildHTTPHeaders(r->headersList);
+  char *responseHeaders=buildHTTPHeadersFromHeaderList(r->headersList);
   size_t responseLength=r->headersList->total_byte_length + r->body_length;
   char *fullResponse =(char *)malloc(responseLength + 1 );
 

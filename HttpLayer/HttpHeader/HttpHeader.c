@@ -119,7 +119,7 @@ int RemoveHeader(headerList *headerList, const char *key)
 
 
 
-char *buildHTTPHeaders(headerList *hl)
+char *buildHTTPHeadersFromHeaderList(headerList *hl)
 {
     char *completeHeader= (char *)malloc(hl->total_byte_length+1);
     if (completeHeader ==NULL)
@@ -142,13 +142,104 @@ char *buildHTTPHeaders(headerList *hl)
 
 void printHeaders(headerList *headerList)
 {
+    if (headerList ==NULL)
+        return;
     printf("the total size is: %zu\n", headerList->total_byte_length);
     for (int i=0; i<headerList->count;i++)
     {   
         char *key= headerList->headers[i].key;
         char *value= headerList->headers[i].value;
-        printf("key %s\n",key);
-        printf("value %s\n",value);
-
+        printf("key: %s\n",key);
+        printf("value: %s\n",value);
     }
+    printf("end\n");
+}
+
+//need to keep working on making this more defensive as this gets
+//data straight from the web which could be invalid/malicious
+//currently I check for maxLength to ensure it doesn't max heap and if I hit the end unexpectedly.
+headerList* buildHeaderListFromHTTPRequest(char *headers)
+{
+    if (headers==NULL)
+        return NULL;
+    int foundEnd=0;
+    int error=0;
+    size_t maxSize =4096;
+    size_t firstLine=strcspn(headers, "\r\n");
+    if (headers[firstLine]=='\0')
+        return NULL;
+    char *start=headers+firstLine+2; //skip the first request line
+
+    headerList *hl=(headerList *)malloc(sizeof(headerList));
+    initializeHeaderList(hl);
+
+     if (strncmp(start, "/r/n",2)==0) //no headers
+        foundEnd=1;
+   
+    while (!foundEnd && !error)
+    {   
+        size_t keyLength=strcspn(start, " ")+1; //include the space
+
+        //header execeeds max size or headers not correct (cant end on a key)
+        if (keyLength>=maxSize|| start[keyLength-1] == '\0') //-1 bc we added 1 prev
+        {
+            error =1;
+            break;
+        }
+        char *key=(char *)malloc(keyLength+1);
+        if (key==NULL)
+            {
+                error=1;
+                break;
+            }
+        memcpy(key, start, keyLength);
+        key[keyLength]='\0';
+        start += keyLength;
+
+        size_t valueLength=strcspn(start, "\r\n");
+        //header execeeds max size or header not correct (must end with \r\n\r\n)
+        if (valueLength>=maxSize || start[valueLength] == '\0') 
+        {
+            free(key);
+            error=1;
+            break;
+        }
+        char *value = (char *)malloc(valueLength +1);
+        if (value==NULL)
+            {
+                free(key);
+                error=1;
+                break;
+            }
+        memcpy(value, start, valueLength);
+        value[valueLength]='\0';
+        start += valueLength+2;
+
+        if (strncmp(start, "\r\n",2)==0)
+            foundEnd=1;
+
+        addHeader(hl, key, value);
+        free(key);
+        free(value);
+    }
+    if (error)
+    {
+        freeHeaderList(hl);
+        return NULL;
+    }  
+    return hl;
+}
+
+
+char *findHeaderValue(headerList *hl, char *key)
+{
+     for (int i=0; i <hl->count; i++)
+    {
+        if (strcmp(hl->headers[i].key, key)==0)
+        {
+            return hl->headers[i].value;
+        }
+    }
+    return NULL;
+
 }

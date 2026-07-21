@@ -34,13 +34,13 @@ const char *getHttpContentType(const char *fileExtention)
 }
 
 
-int buildHttpGetResponse(httpResponse *r ,Content *c)
+int buildHttpGetResponse(httpResponse *r ,Content *c , int statusCode)
 {
   r->body= (char *)malloc(c->data_size +1 );
   if (c->data ==NULL || r->body ==NULL)
     return 0;
   memcpy(r->body, c->data, c->data_size);
-  r->statusCode=200;
+  r->statusCode=statusCode;
   r->body_length=c->data_size;
 
   char buffer[256];
@@ -56,12 +56,9 @@ int buildHttpGetResponse(httpResponse *r ,Content *c)
 }
 
 
-int GETResponse(httpResponse *r,char *headers)
+Content * getContentByHeaders(char *headers)
 {
-
-  //make a content Struct that we will get from loadContent
- 
- char *filePath=extractHeaderFilePath(headers);
+  char *filePath=extractHeaderFilePath(headers);
   if (filePath==NULL)
     return 0;
 
@@ -75,14 +72,28 @@ int GETResponse(httpResponse *r,char *headers)
     fullPath=getCompleteFilePath(filePath+1); //ignore the /
 
   
-
   Content *c= loadContent(fullPath);
-
+  
   free(filePath);
   free(fullPath);
 
+  return c;
+}
+
+
+int GETResponse(httpResponse *r,char *headers)
+{
+ 
+  Content *c=getContentByHeaders(headers);
+
+  headerList *requestHeadersSettings=buildHeaderListFromHTTPRequest(headers);
+  printHeaders(requestHeadersSettings);
+  //now I can find settings like content type allowed and more. :)
+
   if (c==NULL)
     return 0;
+
+  int statusCode=200;
 
   if (!c->exists)
   {
@@ -92,9 +103,10 @@ int GETResponse(httpResponse *r,char *headers)
     free(c);
     c=loadContent(NotFoundfilePath);
     free(NotFoundfilePath);
+    statusCode=404;
   }
   
-  int status= buildHttpGetResponse(r,c);
+  int status= buildHttpGetResponse(r,c, statusCode);
   freeContent(c);
   return status;
 }

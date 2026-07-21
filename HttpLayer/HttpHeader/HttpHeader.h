@@ -23,6 +23,9 @@ int initializeHeaderList(headerList *headers);
 void freeHeaderList(headerList *hl);
 void addHeader(headerList *headerList, const char *key, const char *value);
 int RemoveHeader(headerList *headerList, const char *key);
-char *buildHTTPHeaders(headerList *hl);
+char *buildHTTPHeadersFromHeaderList(headerList *hl);
 const char *getStatusHeader(int statusCode);
+char *findHeaderValue(headerList *hl, char *key);
+headerList* buildHeaderListFromHTTPRequest(char *headers);
+void printHeaders(headerList *headerList);
 

@@ -1,8 +1,6 @@
 #pragma once
 #include <stdlib.h>
 
-#define FILE_PATH_START "ContentLayer/content/"
-
 typedef struct 
 {
     char *data;

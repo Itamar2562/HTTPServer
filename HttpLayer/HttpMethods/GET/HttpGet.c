@@ -7,8 +7,31 @@
 #include <stdint.h>
 
 
+const char *getHttpContentType(const char *fileExtention)
+{
+  if (strcmp(fileExtention,"")==0)
+    return "application/octet-stream"; //default binary data
 
+  else if (strcmp(fileExtention,"html")==0)
+    return "text/html";
 
+  else if (strcmp(fileExtention,"css")==0)
+    return "text/css";
+  
+  else if (strcmp(fileExtention,"js")==0)
+    return "text/javascript";
+
+  else if (strcmp(fileExtention,"png")==0)
+    return "image/png";
+  
+  else if (strcmp(fileExtention,"jpeg")==0)
+    return "image/jpeg";
+
+  else if (strcmp(fileExtention,"svg")==0)
+    return "image/svg+xml";
+  else
+    return "text/plain";
+}
 
 
 int buildHttpGetResponse(httpResponse *r ,Content *c)
@@ -16,8 +39,7 @@ int buildHttpGetResponse(httpResponse *r ,Content *c)
   r->body= (char *)malloc(c->data_size +1 );
   if (c->data ==NULL || r->body ==NULL)
     return 0;
- 
-  strcpy(r->body,c->data);
+  memcpy(r->body, c->data, c->data_size);
   r->statusCode=200;
   r->body_length=c->data_size;
 
@@ -26,7 +48,8 @@ int buildHttpGetResponse(httpResponse *r ,Content *c)
 
   addHeader(r->headersList, "HTTP/1.1 ", getStatusHeader( r->statusCode));
   addHeader(r->headersList,"Content-Length: ",buffer );
-  addHeader(r->headersList,"Content-Type: ",c->type);
+
+  addHeader(r->headersList,"Content-Type: ",getHttpContentType(c->type));
   addHeader(r->headersList, "Connection: ", "keep-alive");
 
   return 1;
@@ -46,8 +69,10 @@ int GETResponse(httpResponse *r,char *headers)
 
   if (strcmp(filePath, "/")==0)
      fullPath=getCompleteFilePath(DEFAULT_SITE);
+  else if (strcmp(filePath, "/favicon.ico")==0)
+      fullPath=getCompleteFilePath(SITE_ICON);
   else
-    fullPath=getCompleteFilePath(filePath);
+    fullPath=getCompleteFilePath(filePath+1); //ignore the /
 
   
 
@@ -61,7 +86,7 @@ int GETResponse(httpResponse *r,char *headers)
 
   if (!c->exists)
   {
-    char *NotFoundfilePath=getCompleteFilePath("NotFound.html");
+    char *NotFoundfilePath=getCompleteFilePath("/NotFound.html");
     if (NotFoundfilePath ==NULL)
       return 0;
     free(c);

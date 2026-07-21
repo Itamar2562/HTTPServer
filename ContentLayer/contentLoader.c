@@ -65,18 +65,19 @@ Content *loadContent(const char *filePath)
     if (length<0 || (unsigned long)length>=SIZE_MAX )
         return NULL;
 
-    c->data= (char *)malloc(sizeof(char)*length +1); //+1 for null \0
+    c->data= (char *)malloc(sizeof(char)*length); 
      if (c->data==NULL)
         {
             fprintf(stderr,"memory error");
             return NULL;
         }
     size_t bytes_read= fread(c->data,1, length, f );
-    c->data[bytes_read]='\0';
 
+    if (bytes_read<length)
+    {
+        fprintf(stderr , "reading file error\n");
+    }
     c->type=getFileExtension(filePath);
-    if (c->type=="")
-        return NULL;
 
     c->data_size=bytes_read;
     c->exists=1;

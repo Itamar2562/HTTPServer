@@ -6,12 +6,12 @@ typedef struct
     char *data;
     size_t data_size;
 
-    const char *type;
+    char *type;
     int exists;
 } Content;
 
 
-Content *loadContent(const char *filePath);
+Content *loadContent(char *filePath);
 void freeContent(Content *c);
 
 

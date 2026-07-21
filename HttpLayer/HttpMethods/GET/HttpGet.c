@@ -9,28 +9,14 @@
 
 const char *getHttpContentType(const char *fileExtention)
 {
-  if (strcmp(fileExtention,"")==0)
-    return "application/octet-stream"; //default binary data
-
-  else if (strcmp(fileExtention,"html")==0)
-    return "text/html";
-
-  else if (strcmp(fileExtention,"css")==0)
-    return "text/css";
-  
-  else if (strcmp(fileExtention,"js")==0)
-    return "text/javascript";
-
-  else if (strcmp(fileExtention,"png")==0)
-    return "image/png";
-  
-  else if (strcmp(fileExtention,"jpeg")==0)
-    return "image/jpeg";
-
-  else if (strcmp(fileExtention,"svg")==0)
-    return "image/svg+xml";
-  else
-    return "text/plain";
+  if (strcmp(fileExtention,"")==0) return "application/octet-stream"; //default binary data
+  else if (strcmp(fileExtention,"html")==0) return "text/html";
+  else if (strcmp(fileExtention,"css")==0)  return "text/css";
+  else if (strcmp(fileExtention,"js")==0)   return "text/javascript";
+  else if (strcmp(fileExtention,"png")==0)  return "image/png";
+  else if (strcmp(fileExtention,"jpeg")==0) return "image/jpeg";
+  else if (strcmp(fileExtention,"svg")==0)  return "image/svg+xml";
+  else  return "text/plain";
 }
 
 
@@ -73,6 +59,7 @@ Content * getContentByHeaders(char *headers)
 
   
   Content *c= loadContent(fullPath);
+
   
   free(filePath);
   free(fullPath);
@@ -87,7 +74,7 @@ int GETResponse(httpResponse *r,char *headers)
   Content *c=getContentByHeaders(headers);
 
   headerList *requestHeadersSettings=buildHeaderListFromHTTPRequest(headers);
-  printHeaders(requestHeadersSettings);
+  //printHeaders(requestHeadersSettings);
   //now I can find settings like content type allowed and more. :)
 
   if (c==NULL)
@@ -97,15 +84,14 @@ int GETResponse(httpResponse *r,char *headers)
 
   if (!c->exists)
   {
-    char *NotFoundfilePath=getCompleteFilePath("/NotFound.html");
+    char *NotFoundfilePath=getCompleteFilePath("NotFound.html");
     if (NotFoundfilePath ==NULL)
       return 0;
-    free(c);
+    freeContent(c);
     c=loadContent(NotFoundfilePath);
     free(NotFoundfilePath);
     statusCode=404;
   }
-  
   int status= buildHttpGetResponse(r,c, statusCode);
   freeContent(c);
   return status;

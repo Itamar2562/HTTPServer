@@ -23,12 +23,15 @@ FILE *openFile(const char *filePath)
      return f;
 }
 
-const char *getFileExtension(const char *filename) {
-    const char *dot = strrchr(filename, '.');
+char *getFileExtension(char *filename) {
+    char *dot = strrchr(filename, '.');
     if (!dot || dot == filename) {
-        return ""; 
+        return NULL; 
     }
-    return dot + 1; 
+    size_t len=strlen(dot+1);
+    char *extension=(char *)malloc(len+ 1);
+    strcpy(extension,dot+1);
+    return extension;
 }
 
 
@@ -53,7 +56,7 @@ long getFileSize(FILE *f)
     return  length;
 }
 
-Content *loadContent(const char *filePath)
+Content *loadContent(char *filePath)
 {   
     Content *c=(Content *)malloc(sizeof(Content) );
     initializeContent(c);        
@@ -78,11 +81,10 @@ Content *loadContent(const char *filePath)
         fprintf(stderr , "reading file error\n");
     }
     c->type=getFileExtension(filePath);
-
+    
     c->data_size=bytes_read;
     c->exists=1;
     fclose(f);
-    printf("%s\n",c->data);
     return c;
 }
 
@@ -90,6 +92,8 @@ void freeContent(Content *c)
 {   
     if (c->data !=NULL)
         free(c->data);
+    if (c->type!=NULL)
+        free(c->type);
     free(c);
 }
 

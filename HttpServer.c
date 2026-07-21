@@ -81,7 +81,7 @@ void SendHttpResponse(int clientFd, httpResponse *response)
   char *fullResponse=buildCompleteResponse(response);
   size_t length=response->body_length + response->headersList->total_byte_length;
   if (sendDataAll(clientFd, fullResponse, length) >0)
-    printf("\nsending to clientFd: %d msg\n %s\n",clientFd,fullResponse);
+    printf("\nsending to clientFd: %d msg\n%.*s\n",clientFd,(int)length,fullResponse); //temp, I dont really need to print what I send
 
   free(fullResponse);
   freeHttpResponse(response);

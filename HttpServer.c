@@ -37,6 +37,7 @@ int getHttpAction(char *headers,char *buffer, size_t maxLength)
 char *buildCompleteResponse(httpResponse *r)
 {
   char *responseHeaders=buildHTTPHeadersFromHeaderList(r->headersList);
+  printf("response headers: %s\n",responseHeaders);
   size_t responseLength=r->headersList->total_byte_length + r->body_length;
   char *fullResponse =(char *)malloc(responseLength);
 
@@ -86,7 +87,7 @@ void SendHttpResponse(int clientFd, httpResponse *response)
   freeHttpResponse(response);
 }
 
-int searchForHttpHeadersChunk(client *c , int *chunkEndIndex)
+int searchForHttpHeadersChunkEnd(client *c , int *chunkEndIndex)
 {
   int foundChunk=0;
    for (int i=0; i<c->chunkCurrLength ; i++)
@@ -127,7 +128,7 @@ char* getHTTPChunk(int clientFd,  client *c , int *errorFlag , int *gotChunk)
       }
     }
 
-  (*gotChunk)= searchForHttpHeadersChunk(c, &chunkEndIndex);
+  (*gotChunk)= searchForHttpHeadersChunkEnd(c, &chunkEndIndex);
    
   char *header=NULL;
   

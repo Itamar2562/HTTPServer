@@ -34,6 +34,8 @@ int buildHttpGetResponse(httpResponse *r ,Content *c , int statusCode)
 
   addHeader(r->headersList, "HTTP/1.1 ", getStatusHeader( r->statusCode));
   addHeader(r->headersList,"Content-Length: ",buffer );
+  snprintf(buffer, sizeof(buffer), "inline; filename=\"%s\"", c->fileName);
+  addHeader(r->headersList,"Content-Disposition: ",buffer);
 
   addHeader(r->headersList,"Content-Type: ",getHttpContentType(c->type));
   addHeader(r->headersList, "Connection: ", "keep-alive");

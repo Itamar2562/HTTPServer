@@ -6,6 +6,7 @@ typedef struct
     char *data;
     size_t data_size;
 
+    char *fileName;
     char *type;
     int exists;
 } Content;

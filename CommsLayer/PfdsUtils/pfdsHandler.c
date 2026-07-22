@@ -3,21 +3,22 @@
 #include <stdlib.h>
 //function gets a ptr to a ptr which is a ptr to an array to 
 //possible change the position of the array based on its size and count
-void addToPfds(struct pollfd** pfds, int newfd, int fd_count, int *fd_size)
+int addToPfds(struct pollfd** pfds, int newfd, int fd_count, int fd_size)
 {
-  if (fd_count== *fd_size)
+  if (fd_count>= fd_size)
   {
-    (*fd_size)*=2;
-    struct pollfd *temp=realloc(*pfds,sizeof(**pfds) * (*fd_size) );
+    fd_size*=2;
+    struct pollfd *temp=realloc(*pfds,sizeof(**pfds) * fd_size );
     if (temp == NULL)
-      return;
+      return 0;
     else
       *pfds=temp;
   }
-
   (*pfds)[fd_count].fd=newfd;
   (*pfds)[fd_count].events=POLLIN; // check if ready to read
   (*pfds)[fd_count].revents =0; //reset
+
+  return 1;
 
 }
 

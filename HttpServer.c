@@ -23,7 +23,6 @@
 
 int getHttpAction(char *headers,char *buffer, size_t maxLength)
 {
-  size_t i=0;
   size_t length=strcspn(headers, " "); //get the length until the first space
   if (length>=maxLength)
   {
@@ -39,7 +38,7 @@ char *buildCompleteResponse(httpResponse *r)
 {
   char *responseHeaders=buildHTTPHeadersFromHeaderList(r->headersList);
   size_t responseLength=r->headersList->total_byte_length + r->body_length;
-  char *fullResponse =(char *)malloc(responseLength + 1 );
+  char *fullResponse =(char *)malloc(responseLength);
 
   if (responseHeaders==NULL || fullResponse ==NULL)
     return NULL;
@@ -81,60 +80,94 @@ void SendHttpResponse(int clientFd, httpResponse *response)
   char *fullResponse=buildCompleteResponse(response);
   size_t length=response->body_length + response->headersList->total_byte_length;
   if (sendDataAll(clientFd, fullResponse, length) >0)
-    printf("\nsending to clientFd: %d msg\n%.*s\n",clientFd,(int)length,fullResponse); //temp, I dont really need to print what I send
+    //printf("\nsending to clientFd: %d msg\n%.*s\n",clientFd,(int)length,fullResponse); //temp, I dont really need to print what I send
 
   free(fullResponse);
   freeHttpResponse(response);
 }
 
-
-
-
-char *getChunk(int clientFd, char **buffer,int *maxLength , int *currLength)
+int searchForHttpHeadersChunk(client *c , int *chunkEndIndex)
 {
-  int gotChunk=0;
-  int end=0;
-  char *header=NULL;
-  while(!gotChunk)
-  { 
-    int remainingSpace=*maxLength-*currLength;
-    int nbytes=recv(clientFd, (*buffer)+ (*currLength),remainingSpace-1,0);
-    (*currLength) +=nbytes;
-    (*buffer)[*currLength]='\0';
-    if (nbytes<=0) // got a problem
+  int foundChunk=0;
+   for (int i=0; i<c->chunkCurrLength ; i++)
     {
-      if (nbytes==0) // connection closed
+      if ((c->buffer)[i]=='\r'&& strncmp(&(c->buffer)[i],"\r\n\r\n",4)==0)
+        {
+          (*chunkEndIndex)=i+4;
+          foundChunk=1;
+          break;
+        }
+    }
+    return foundChunk;
+}
+
+
+char* getHTTPChunk(int clientFd,  client *c , int *errorFlag , int *gotChunk)
+{ 
+    int status = recvChunk(clientFd , c->buffer, &c->chunkMaxLength, &c->chunkCurrLength);
+    if (!status)  
+    {
+      (*errorFlag)=1;
+      return NULL;
+    }
+    int chunkEndIndex=0;
+
+    if (c->chunkCurrLength+1>=c->chunkMaxLength)
+    {
+      c->chunkMaxLength*=2;
+      char *temp=realloc(c->buffer, c->chunkMaxLength +1);
+      if (temp!=NULL)
       {
-        printf("pollserver: socket %d hung up on us :(\n",clientFd);
+          (c->buffer) = temp;
       }
       else
-          perror("recv");
-      break;
+      {
+        (*errorFlag)=1;
+        return NULL;
+      }
     }
 
-    header=getHTTPChunk(buffer,maxLength, currLength);
-    if (header!=NULL)
-      gotChunk=1;
+  (*gotChunk)= searchForHttpHeadersChunk(c, &chunkEndIndex);
+   
+  char *header=NULL;
+  
+  if (*gotChunk){
+    int rest=c->chunkCurrLength - chunkEndIndex;
+    header=(char *)malloc(chunkEndIndex+1);
+    if (header==NULL)
+    {
+        (*errorFlag)=1;
+        return NULL;
+    }
+    strncpy(header, c->buffer, chunkEndIndex);
+    header[chunkEndIndex]='\0';
+    memcpy(c->buffer, c->buffer+chunkEndIndex, rest);
+    (c->chunkCurrLength)=rest;
+    c->buffer[rest]='\0';
   }
   return header;
 }
+
+
 
 void handleClientData(int listener, int *curr_count, struct pollfd *pfds,client *clients, int *index)
 {
  
   int clientFd=pfds[*index].fd;
 
-  char *requestHeaders=getChunk(clientFd, &clients[*index].buffer, &clients[*index].chunkMaxLength, &clients[*index].chunkCurrLength);
-  if (requestHeaders==NULL)
+  int gotChunk=0;
+  int errorFlag =0;
+  char *requestHeaders=getHTTPChunk(clientFd, &clients[*index], &errorFlag, &gotChunk );
+  if (errorFlag)
   {
       close(clientFd);
       delFromPfds(pfds, *index, *curr_count);
       delFromClients(clients,*index, *curr_count );
       (*index)--; //delete swaps the last with curr so we need to check again this pos
       (*curr_count)--;
+      return;
   }
-  
-  else
+  if (gotChunk)
   {
     printf("pollserver: recv from fd %d: \n%s\n",clientFd,requestHeaders);
     
@@ -143,8 +176,9 @@ void handleClientData(int listener, int *curr_count, struct pollfd *pfds,client 
       return;
     else
        SendHttpResponse(clientFd, response);
-  }
+
     free(requestHeaders);
+  }
 }
 
 void ProccessConnections(int listener, int *curr_count, int *max_size,struct pollfd **pfds, client **clients){
@@ -155,12 +189,12 @@ void ProccessConnections(int listener, int *curr_count, int *max_size,struct pol
     {
       if ((*pfds)[i].fd==listener) //the listener has smg to read (a new conn)
         {
-          int clientFd=handleNewConnection(listener, *curr_count,max_size,pfds); 
-          if (clientFd!=-1) // check if accept worked
+          int clientFd=handleNewConnection(listener, *curr_count, *max_size,pfds); 
+          if (clientFd!=0) // no error in comms layer
           {
-            addToClients(clients, clientFd, *curr_count, max_size);
-            initializeClient(*clients, *curr_count);
-            (*curr_count)++;
+            int status = addToClients(clients,*curr_count, max_size);
+            if (status) // no need to delete the last pfd on error as we dont increase count
+              (*curr_count)++;
           }
         }
 
@@ -191,7 +225,7 @@ int main(int argc, int **argv)
 
   while (1)
   {
-      int poll_count=poll(pfds, max_size, -1);
+      int poll_count=poll(pfds, curr_count, -1);
       if (poll_count==-1){
         perror("poll error");
         exit(1);

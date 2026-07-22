@@ -173,49 +173,35 @@ void recvData(int sockfd, char *buffer,size_t length)
 
 }
 
-char* getHTTPChunk(char **buffer,int *maxLength, int *currLength)
-{ 
-    int foundChunk=0;
-    int chunkEnd=0;
-    for (int i=0; i<*currLength ; i++)
+
+
+int recvChunk(int clientFd, char *buffer,int *maxLength , int *currLength)
+{
+  int end=0;
+ 
+  int remainingSpace=*maxLength-*currLength;
+  if (remainingSpace <=0)
     {
-      if ((*buffer)[i]=='\r'&& strncmp(&(*buffer)[i],"\r\n\r\n",4)==0)
-        {
-          chunkEnd=i+4;
-          foundChunk=1;
-          break;
-        }
+      fprintf(stderr, "got out of buffer room\n");
+      return 0;
     }
-  if (*currLength+1>=*maxLength)
+  int nbytes=recv(clientFd, buffer+ (*currLength),remainingSpace-1,0);
+  if (nbytes<=0) // got a problem
   {
-    (*maxLength)*=2;
-    char *temp=realloc(*buffer, *maxLength);
-    if (temp!=NULL)
-    {
-       (*buffer) = temp;
-    }
+    if (nbytes==0) // connection closed
+      printf("pollserver: socket %d hung up on us :(\n",clientFd);
     else
-      return NULL;  
+        perror("recv");
+    return 0;
   }
-  char *header=NULL;
-  
-  if (foundChunk){
-    int rest=*currLength - chunkEnd;
-    header=(char *)malloc(chunkEnd+1);
-    if (header==NULL)
-      return NULL;
-    strncpy(header, *buffer, chunkEnd);
-    header[chunkEnd]='\0';
-    memcpy(*buffer, (*buffer)+chunkEnd, rest);
-    (*currLength)=rest;
-    (*buffer)[rest]='\0';
-  }
-  return header;
+  (*currLength) +=nbytes;
+  buffer[*currLength]='\0';
+  return 1;
+
 }
 
 
-
-int handleNewConnection(int listener , int fd_count, int *fd_size, struct pollfd **pollfd)
+int handleNewConnection(int listener , int fd_count, int fd_size, struct pollfd **pollfd)
 {
   struct sockaddr_storage clientAddr;
   socklen_t clientAddrLen;
@@ -231,10 +217,13 @@ int handleNewConnection(int listener , int fd_count, int *fd_size, struct pollfd
   }
   else
   {
-    addToPfds(pollfd, clientFd, fd_count,fd_size);
+    int status= addToPfds(pollfd, clientFd, fd_count,fd_size);
+    if (!status)
+      return 0;
     printf("new conenction from %s from socket %d\n", 
     getPresIpAddr((struct sockaddr*)&clientAddr,clientIP, sizeof(clientIP)),clientFd);
-    return 1;
+
+    return clientFd;
   }
 }
 

@@ -1,7 +1,19 @@
 #include "clientUtils.h"
 #include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
 
 #define MAX_BUFFER_CHUNK_SIZE 256
+
+int initializeClient(client * clients, int index)
+{
+  clients[index].buffer=(char *)malloc(MAX_BUFFER_CHUNK_SIZE);
+  if (clients[index].buffer ==NULL)
+    return 0;
+  clients[index].chunkCurrLength=0;
+  clients[index].chunkMaxLength=MAX_BUFFER_CHUNK_SIZE;
+  return 1;
+}
 
 
 void delFromClients(client *clients, int i,int client_count )
@@ -10,24 +22,24 @@ void delFromClients(client *clients, int i,int client_count )
   clients[i]=clients[(client_count-1)];
 }
 
-int addToClients(client **clients,int clientFd,int clients_count,int *clients_size)
+
+int addToClients(client **clients,int clients_count,int *clients_size)
 {
-    if (clients_count>= *clients_size)
+  if (clients_count>= *clients_size)
   {
     (*clients_size)*=2;
-    *clients=realloc(*clients,sizeof(**clients) * (*clients_size) );
+    client *temp= realloc(*clients,sizeof(client) * (*clients_size));
+    if (temp==NULL)
+    {
+      perror("memory error");
+      return 0;
+    }
+    (*clients)= temp;
   }
-
-  (*clients)[clients_count].chunkMaxLength=MAX_BUFFER_CHUNK_SIZE; 
-  (*clients)[clients_count].buffer =(char *)malloc(MAX_BUFFER_CHUNK_SIZE); 
+  int status=initializeClient(*clients, clients_count);
+  return status;
 }
 
-void initializeClient(client * clients, int index)
-{
-  clients[index].buffer=(char *)malloc(MAX_BUFFER_CHUNK_SIZE);
-  clients[index].chunkCurrLength=0;
-  clients[index].chunkMaxLength=MAX_BUFFER_CHUNK_SIZE;
-}
 
 void freeClients(client *clients,int clients_count)
 {

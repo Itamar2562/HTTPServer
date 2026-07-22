@@ -17,7 +17,7 @@ FILE *openFile(const char *filePath)
      FILE *f=fopen(filePath,"r");
 
     if (f==NULL){
-    fprintf(stderr, "file not found");
+    fprintf(stderr, "file not found\n");
         return NULL;
     }
      return f;

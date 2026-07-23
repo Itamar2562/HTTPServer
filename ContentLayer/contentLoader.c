@@ -113,12 +113,19 @@ Content *loadContent(char *filePath)
 
 void freeContent(Content *c)
 {   
-    if (c->data !=NULL)
-        free(c->data);
-    if (c->type!=NULL)
-        free(c->type);
-    if (c->fileName!=NULL)
-        free(c->fileName);
+    free(c->data);
+    free(c->type);
+    free(c->fileName);
     free(c);
 }
 
+char *getCompleteFilePath(const char *path)
+{
+  char *completePath= (char *)malloc(strlen(path)+ strlen(FILE_PATH_START) +1);
+  if (completePath ==NULL)
+    return NULL;
+  strcpy(completePath, FILE_PATH_START);
+  strcat(completePath, path);
+
+  return completePath;
+}

@@ -16,16 +16,15 @@ typedef struct
     header *headers;
     int count;
     int max_size;
-    size_t total_byte_length;
 } headerList;
 
 int initializeHeaderList(headerList *headers);
 void freeHeaderList(headerList *hl);
 void addHeader(headerList *headerList, const char *key, const char *value);
 int RemoveHeader(headerList *headerList, const char *key);
-char *buildHTTPHeadersFromHeaderList(headerList *hl);
 const char *getStatusHeader(int statusCode);
 char *findHeaderValue(headerList *hl, char *key);
-headerList* buildHeaderListFromHTTPRequest(char *headers);
+char *buildHTTPHeadersFromHeaderList(headerList *hl, size_t *headersLength);
 void printHeaders(headerList *headerList);
+headerList* buildHeaderListFromHTTPRequest(char *headers);
 

@@ -15,43 +15,20 @@
 #include "HttpLayer/HttpResponse/HttpResponse.h"
 #include "HttpLayer/HttpHeader/HttpHeader.h"
 #include "HttpLayer/HttpMethods/GET/HttpGet.h"
+#include "HttpLayer/HttpRequest/HttpRequest.h"
 
 
 #include "ContentLayer/contentUtils.h"
 
 
 
-int getHttpAction(char *headers,char *buffer, size_t maxLength)
+HttpRequest *parseRequest(char *request)
 {
-  size_t length=strcspn(headers, " "); //get the length until the first space
-  if (length>=maxLength)
-  {
-    fprintf(stderr, "Http action buffer overflow\n");
-    return 0;
-  }
-  memcpy(buffer,headers, length);
-  buffer[length]='\0';
-  return 1;
+    HttpRequest *req=buildHttpRequest(request);
+    return req;
 }
 
-char *buildCompleteResponse(httpResponse *r)
-{
-  char *responseHeaders=buildHTTPHeadersFromHeaderList(r->headersList);
-  printf("response headers: %s\n",responseHeaders);
-  size_t responseLength=r->headersList->total_byte_length + r->body_length;
-  char *fullResponse =(char *)malloc(responseLength);
-
-  if (responseHeaders==NULL || fullResponse ==NULL)
-    return NULL;
-
-  memcpy(fullResponse, responseHeaders, r->headersList->total_byte_length);
-  memcpy(fullResponse +r->headersList->total_byte_length, r->body , r->body_length);
-
-  free(responseHeaders);
-  return fullResponse;
-}
-
-httpResponse* routeHttpRequest(char *headers)
+httpResponse* routeHttpRequest(HttpRequest *request)
 {
   httpResponse *response = (httpResponse *) malloc( sizeof(httpResponse));
   if (response ==NULL)
@@ -60,14 +37,9 @@ httpResponse* routeHttpRequest(char *headers)
   if (initializeHttpResponse(response) ==0)
     return NULL;
 
-  size_t maxLength=24;
-  char action[maxLength];
-  if (getHttpAction(headers, action, maxLength)==0 )
-    return NULL;
-
-  if (strcmp(action,"GET")==0)
+  if (strcmp(request->method,"GET")==0)
   {
-    if (GETResponse(response,headers) == 0)
+    if (GETResponse(response,request) == 0)
        return NULL;
   }
   else;
@@ -78,10 +50,10 @@ httpResponse* routeHttpRequest(char *headers)
 
 void SendHttpResponse(int clientFd, httpResponse *response)
 {
-  char *fullResponse=buildCompleteResponse(response);
-  size_t length=response->body_length + response->headersList->total_byte_length;
-  if (sendDataAll(clientFd, fullResponse, length) >0)
-    //printf("\nsending to clientFd: %d msg\n%.*s\n",clientFd,(int)length,fullResponse); //temp, I dont really need to print what I send
+  size_t fullResponseLength=0;
+  char *fullResponse=buildCompleteResponse(response , &fullResponseLength);
+  if (fullResponse !=NULL)
+      sendDataAll(clientFd, fullResponse, fullResponseLength);
 
   free(fullResponse);
   freeHttpResponse(response);
@@ -112,15 +84,18 @@ char* getHTTPChunk(int clientFd,  client *c , int *errorFlag , int *gotChunk)
       return NULL;
     }
     int chunkEndIndex=0;
-
+    
     if (c->chunkCurrLength+1>=c->chunkMaxLength)
     {
       c->chunkMaxLength*=2;
+      if (c->chunkMaxLength > MAX_BUFFER_SIZE)
+      {
+        (*errorFlag)=1;
+        return NULL;
+      }
       char *temp=realloc(c->buffer, c->chunkMaxLength +1);
       if (temp!=NULL)
-      {
           (c->buffer) = temp;
-      }
       else
       {
         (*errorFlag)=1;
@@ -161,6 +136,7 @@ void handleClientData(int listener, int *curr_count, struct pollfd *pfds,client 
   char *requestHeaders=getHTTPChunk(clientFd, &clients[*index], &errorFlag, &gotChunk );
   if (errorFlag)
   {
+      printf("removed socket %d\n",clientFd);
       close(clientFd);
       delFromPfds(pfds, *index, *curr_count);
       delFromClients(clients,*index, *curr_count );
@@ -172,7 +148,10 @@ void handleClientData(int listener, int *curr_count, struct pollfd *pfds,client 
   {
     printf("pollserver: recv from fd %d: \n%s\n",clientFd,requestHeaders);
     
-    httpResponse *response=routeHttpRequest(requestHeaders);
+    HttpRequest  *parsedRequest= parseRequest(requestHeaders);
+    if (parsedRequest== NULL)
+      return;
+    httpResponse *response=routeHttpRequest(parsedRequest);
     if (response ==NULL)
       return;
     else
@@ -182,8 +161,8 @@ void handleClientData(int listener, int *curr_count, struct pollfd *pfds,client 
   }
 }
 
-void ProccessConnections(int listener, int *curr_count, int *max_size,struct pollfd **pfds, client **clients){
-  for (int i=0; i<*curr_count;i++)
+void ProccessConnections(int listener, int *curr_count, int *max_size,struct pollfd **pfds, client **clients, int poll_count){
+  for (int i=0; i<*curr_count && poll_count >0;i++)
   {
 
     if ((*pfds)[i].revents & (POLLIN | POLLHUP)) // we got new data (smg to read or hang up)
@@ -201,6 +180,7 @@ void ProccessConnections(int listener, int *curr_count, int *max_size,struct pol
 
       else
         handleClientData(listener, curr_count, *pfds,*clients,&i);
+      poll_count--;
     }
 
   }
@@ -232,7 +212,7 @@ int main(int argc, int **argv)
         exit(1);
       }
 
-      ProccessConnections(sockfd, &curr_count,&max_size, &pfds, &clients);
+      ProccessConnections(sockfd, &curr_count,&max_size, &pfds, &clients, poll_count);
   }
   close(sockfd);
   free(pfds);

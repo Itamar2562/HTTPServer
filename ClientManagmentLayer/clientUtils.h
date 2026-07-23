@@ -1,6 +1,8 @@
 #ifndef CLIENT_UTILS_H
 #define CLIENT_UTILS_H
 
+#define STARTING_BUFFER_SIZE 256
+#define MAX_BUFFER_SIZE 16384
 
 typedef struct 
 {

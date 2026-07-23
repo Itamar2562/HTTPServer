@@ -8,6 +8,7 @@
 typedef struct 
 {
     int statusCode;
+    char *version;
     headerList *headersList;
 
     size_t body_length;
@@ -18,6 +19,7 @@ typedef struct
 
 int initializeHttpResponse(httpResponse * response);
 void freeHttpResponse(httpResponse *response);
+char *buildCompleteResponse(httpResponse *r, size_t *fullResponseLength);
 
 
 

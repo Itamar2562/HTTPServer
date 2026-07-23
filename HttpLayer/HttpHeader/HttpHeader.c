@@ -22,7 +22,6 @@ int initializeHeaderList(headerList *h)
 {
     h->count=0;
     h->max_size=MAX_HEADER_COUNT;
-    h->total_byte_length=0;
     h->headers=(header* )malloc(sizeof(header)*h->max_size);
     return  h->headers!=NULL ?  1 : 0;
 }
@@ -50,14 +49,12 @@ void removeCLRF(headerList *headerList)
 {
     header *h=&headerList->headers[headerList->count-1];
     h->value[strlen(h->value)-2]='\0';
-    headerList->total_byte_length-=2;
 }
 
 void addCLRF(headerList *headerList)
 {
     header *h=&headerList->headers[headerList->count-1];
     strcat(h->value,"\r\n");
-    headerList->total_byte_length+=2;
 }
 
 void addHeader(headerList *headerList, const char *key, const char *value)
@@ -96,7 +93,6 @@ void addHeader(headerList *headerList, const char *key, const char *value)
     (*h).value[valueLength]='\0';
 
     headerList->count++;
-    headerList->total_byte_length+=keyLength+valueLength;
 }
 
 int RemoveHeader(headerList *headerList, const char *key)
@@ -105,7 +101,6 @@ int RemoveHeader(headerList *headerList, const char *key)
     {
         if (strcmp(headerList->headers[i].key, key)==0)
         {
-            headerList->total_byte_length-=strlen(headerList->headers[i].key)+strlen(headerList->headers[i].value);
             freeHeader(&headerList->headers[i]);
             headerList->headers[i]=headerList->headers[headerList->count-1];
             headerList->count--;
@@ -119,22 +114,45 @@ int RemoveHeader(headerList *headerList, const char *key)
 
 
 
-char *buildHTTPHeadersFromHeaderList(headerList *hl)
+char *buildHTTPHeadersFromHeaderList(headerList *hl, size_t *headersLength)
 {
-    char *completeHeader= (char *)malloc(hl->total_byte_length+1);
+    if (hl==NULL || headersLength ==NULL)
+        return NULL;
+    int currSize=256;
+    char *completeHeader= (char *)malloc(currSize);
     if (completeHeader ==NULL)
         return NULL;
     char *current=completeHeader;
+    size_t offset=0;
+    (*headersLength)=0;
     for (int i=0; i<hl->count; i++)
     {
         size_t keyLength=strlen(hl->headers[i].key);
-        memcpy(current, hl->headers[i].key, keyLength);
-        current+=keyLength;
-
         size_t ValueLength=strlen(hl->headers[i].value);
-        memcpy(current, hl->headers[i].value, ValueLength);
-        current+=ValueLength;
 
+        if(keyLength+ValueLength>=currSize)
+            {
+                while (keyLength+ValueLength>=currSize)
+                    currSize*=2;
+                char *temp=realloc(completeHeader, currSize +1);
+                if (temp==NULL)
+                {
+                    free(completeHeader);
+                    return NULL;
+                }
+                completeHeader=temp;
+                current = completeHeader +(*headersLength);
+            }
+        memcpy(current, hl->headers[i].key, keyLength);
+        memcpy(current + keyLength, ": ", 2);
+        offset = keyLength +2;
+        (*headersLength)+=offset;
+        current+=offset;
+
+        memcpy(current, hl->headers[i].value, ValueLength);
+        offset =ValueLength;
+        (*headersLength)+=offset;
+        current+=offset;
     }
     (*current)='\0';
     return completeHeader;
@@ -144,7 +162,6 @@ void printHeaders(headerList *headerList)
 {
     if (headerList ==NULL)
         return;
-    printf("the total size is: %zu\n", headerList->total_byte_length);
     for (int i=0; i<headerList->count;i++)
     {   
         char *key= headerList->headers[i].key;
@@ -155,33 +172,40 @@ void printHeaders(headerList *headerList)
     printf("end\n");
 }
 
-//need to keep working on making this more defensive as this gets
-//data straight from the web which could be invalid/malicious
-//currently I check for maxLength to ensure it doesn't max heap and if I hit the end unexpectedly.
+
+char *skipTheRequestLine(char *headers)
+{
+    if (headers==NULL)
+        return NULL;
+    
+    size_t firstLine=strcspn(headers, "\r\n");
+    if (headers[firstLine]=='\0')
+        return NULL;
+    return headers+firstLine+2; 
+}
+
+
 headerList* buildHeaderListFromHTTPRequest(char *headers)
 {
     if (headers==NULL)
         return NULL;
+    
     int foundEnd=0;
     int error=0;
-    size_t maxSize =4096;
-    size_t firstLine=strcspn(headers, "\r\n");
-    if (headers[firstLine]=='\0')
-        return NULL;
-    char *start=headers+firstLine+2; //skip the first request line
 
     headerList *hl=(headerList *)malloc(sizeof(headerList));
+    if (hl==NULL)
+        return NULL;
     initializeHeaderList(hl);
 
-     if (strncmp(start, "/r/n",2)==0) //no headers
+     if (strncmp(headers, "\r\n",2)==0) //no headers
         foundEnd=1;
    
     while (!foundEnd && !error)
     {   
-        size_t keyLength=strcspn(start, " ")+1; //include the space
+        size_t keyLength=strcspn(headers, ":"); 
 
-        //header execeeds max size or headers not correct (cant end on a key)
-        if (keyLength>=maxSize|| start[keyLength-1] == '\0') //-1 bc we added 1 prev
+        if (headers[keyLength] == '\0') 
         {
             error =1;
             break;
@@ -192,13 +216,15 @@ headerList* buildHeaderListFromHTTPRequest(char *headers)
                 error=1;
                 break;
             }
-        memcpy(key, start, keyLength);
+        memcpy(key, headers, keyLength);
         key[keyLength]='\0';
-        start += keyLength;
-
-        size_t valueLength=strcspn(start, "\r\n");
-        //header execeeds max size or header not correct (must end with \r\n\r\n)
-        if (valueLength>=maxSize || start[valueLength] == '\0') 
+        headers += keyLength+1;
+        while ((*headers)==' '|| (*headers)=='\t')
+            headers++;
+       
+        size_t valueLength=strcspn(headers, "\r\n");
+        //it cant be empty or end with \n or have \r without \n as well.
+        if (headers[valueLength] == '\0' || headers[valueLength] == '\n' || (headers[valueLength]=='\r' && headers[valueLength+1] !='\n') ) 
         {
             free(key);
             error=1;
@@ -211,11 +237,11 @@ headerList* buildHeaderListFromHTTPRequest(char *headers)
                 error=1;
                 break;
             }
-        memcpy(value, start, valueLength);
+        memcpy(value, headers, valueLength);
         value[valueLength]='\0';
-        start += valueLength+2;
+        headers += valueLength+2;
 
-        if (strncmp(start, "\r\n",2)==0)
+        if (strncmp(headers, "\r\n",2)==0)
             foundEnd=1;
 
         addHeader(hl, key, value);
@@ -230,7 +256,6 @@ headerList* buildHeaderListFromHTTPRequest(char *headers)
     return hl;
 }
 
-
 char *findHeaderValue(headerList *hl, char *key)
 {
      for (int i=0; i <hl->count; i++)
@@ -243,3 +268,5 @@ char *findHeaderValue(headerList *hl, char *key)
     return NULL;
 
 }
+
+

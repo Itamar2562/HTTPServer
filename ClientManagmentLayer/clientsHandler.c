@@ -3,15 +3,14 @@
 #include <stdio.h>
 #include <errno.h>
 
-#define MAX_BUFFER_CHUNK_SIZE 256
 
 int initializeClient(client * clients, int index)
 {
-  clients[index].buffer=(char *)malloc(MAX_BUFFER_CHUNK_SIZE);
+  clients[index].buffer=(char *)malloc(STARTING_BUFFER_SIZE);
   if (clients[index].buffer ==NULL)
     return 0;
   clients[index].chunkCurrLength=0;
-  clients[index].chunkMaxLength=MAX_BUFFER_CHUNK_SIZE;
+  clients[index].chunkMaxLength=STARTING_BUFFER_SIZE;
   return 1;
 }
 

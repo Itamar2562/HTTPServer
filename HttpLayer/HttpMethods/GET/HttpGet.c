@@ -1,7 +1,5 @@
 #include "HttpGet.h"
-#include "../../HttpResponse/HttpResponse.h"
 #include "../../../ContentLayer/contentUtils.h"
-#include "../../FilePathsHandler/filePaths.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -20,7 +18,7 @@ const char *getHttpContentType(const char *fileExtention)
 }
 
 
-int buildHttpGetResponse(httpResponse *r ,Content *c , int statusCode)
+int buildHttpGetResponse(httpResponse *r ,Content *c , int statusCode, char *version)
 {
   r->body= (char *)malloc(c->data_size +1 );
   if (c->data ==NULL || r->body ==NULL)
@@ -28,63 +26,58 @@ int buildHttpGetResponse(httpResponse *r ,Content *c , int statusCode)
   memcpy(r->body, c->data, c->data_size);
   r->statusCode=statusCode;
   r->body_length=c->data_size;
+  r->version=version;
 
   char buffer[256];
   snprintf(buffer, sizeof(buffer), "%zu", r->body_length);
 
-  addHeader(r->headersList, "HTTP/1.1 ", getStatusHeader( r->statusCode));
-  addHeader(r->headersList,"Content-Length: ",buffer );
+  addHeader(r->headersList,"Content-Length",buffer );
   snprintf(buffer, sizeof(buffer), "inline; filename=\"%s\"", c->fileName);
-  addHeader(r->headersList,"Content-Disposition: ",buffer);
+  addHeader(r->headersList,"Content-Disposition",buffer);
 
-  addHeader(r->headersList,"Content-Type: ",getHttpContentType(c->type));
-  addHeader(r->headersList, "Connection: ", "keep-alive");
+  addHeader(r->headersList,"Content-Type",getHttpContentType(c->type));
+  addHeader(r->headersList, "Connection", "keep-alive");
 
   return 1;
 }
 
 
-Content * getContentByHeaders(char *headers)
+Content * getContentByRequest(HttpRequest *request)
 {
-  char *filePath=extractHeaderFilePath(headers);
-  if (filePath==NULL)
-    return 0;
-
   char *fullPath;
 
-  if (strcmp(filePath, "/")==0)
+  if (strcmp(request->path, "/")==0)
      fullPath=getCompleteFilePath(DEFAULT_SITE);
-  else if (strcmp(filePath, "/favicon.ico")==0)
+  else if (strcmp(request->path, "/favicon.ico")==0)
       fullPath=getCompleteFilePath(SITE_ICON);
   else
-    fullPath=getCompleteFilePath(filePath+1); //ignore the /
+    fullPath=getCompleteFilePath(request->path+1); //ignore the /
 
   
   Content *c= loadContent(fullPath);
 
-  
-  free(filePath);
   free(fullPath);
-
   return c;
 }
 
+int validVersion(HttpRequest *request)
+{
+  if (strcmp(request->version,"HTTP/1.1")==0)
+    return 0;
+}
 
-int GETResponse(httpResponse *r,char *headers)
+
+int GETResponse(httpResponse *response,HttpRequest *request)
 {
  
-  Content *c=getContentByHeaders(headers);
-
-  headerList *requestHeadersSettings=buildHeaderListFromHTTPRequest(headers);
-  //printHeaders(requestHeadersSettings);
-  //now I can find settings like content type allowed and more. :)
+  Content *c=getContentByRequest(request);
 
   if (c==NULL)
     return 0;
 
   int statusCode=200;
 
-  if (!c->exists)
+  if (!c->exists && validVersion(request))
   {
     char *NotFoundfilePath=getCompleteFilePath("NotFound.html");
     if (NotFoundfilePath ==NULL)
@@ -94,7 +87,7 @@ int GETResponse(httpResponse *r,char *headers)
     free(NotFoundfilePath);
     statusCode=404;
   }
-  int status= buildHttpGetResponse(r,c, statusCode);
+  int status= buildHttpGetResponse(response,c, statusCode,request->version);
   freeContent(c);
   return status;
 }

@@ -1,5 +1,7 @@
 #include "HttpRequest.h"
 #include "../HttpHeader/HttpHeader.h"
+#include "../../ContentLayer/contentUtils.h"
+#include "../MimeTypes/MimeTypes.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -18,6 +20,7 @@ void freeRequest(HttpRequest *request)
     free(request->method);
     free(request->path);
     free(request->version);
+    free(request->fileType);
     free(request);
 }
 
@@ -111,4 +114,7 @@ HttpRequest *buildHttpRequest(char *request)
             return NULL;
     }
     ParsedRequest->headers=hl;
+
+    ParsedRequest->fileType=getFileExtension(ParsedRequest->path);
+    return ParsedRequest;
 }

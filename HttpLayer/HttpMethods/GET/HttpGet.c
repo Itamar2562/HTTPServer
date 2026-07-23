@@ -1,21 +1,10 @@
 #include "HttpGet.h"
 #include "../../../ContentLayer/contentUtils.h"
+#include "../../MimeTypes/MimeTypes.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
 
-
-const char *getHttpContentType(const char *fileExtention)
-{
-  if (strcmp(fileExtention,"")==0) return "application/octet-stream"; //default binary data
-  else if (strcmp(fileExtention,"html")==0) return "text/html";
-  else if (strcmp(fileExtention,"css")==0)  return "text/css";
-  else if (strcmp(fileExtention,"js")==0)   return "text/javascript";
-  else if (strcmp(fileExtention,"png")==0)  return "image/png";
-  else if (strcmp(fileExtention,"jpeg")==0) return "image/jpeg";
-  else if (strcmp(fileExtention,"svg")==0)  return "image/svg+xml";
-  else  return "text/plain";
-}
 
 
 int buildHttpGetResponse(httpResponse *r ,Content *c , int statusCode, char *version)
@@ -35,30 +24,25 @@ int buildHttpGetResponse(httpResponse *r ,Content *c , int statusCode, char *ver
   snprintf(buffer, sizeof(buffer), "inline; filename=\"%s\"", c->fileName);
   addHeader(r->headersList,"Content-Disposition",buffer);
 
-  addHeader(r->headersList,"Content-Type",getHttpContentType(c->type));
+  addHeader(r->headersList,"Content-Type",getHttpMimeType(c->type));
   addHeader(r->headersList, "Connection", "keep-alive");
 
   return 1;
 }
 
-
-Content * getContentByRequest(HttpRequest *request)
+char *redirectToCorrectFullPath(char *path)
 {
   char *fullPath;
-
-  if (strcmp(request->path, "/")==0)
+  if (strcmp(path, "/")==0)
      fullPath=getCompleteFilePath(DEFAULT_SITE);
-  else if (strcmp(request->path, "/favicon.ico")==0)
+  else if (strcmp(path, "/favicon.ico")==0)
       fullPath=getCompleteFilePath(SITE_ICON);
   else
-    fullPath=getCompleteFilePath(request->path+1); //ignore the /
-
-  
-  Content *c= loadContent(fullPath);
-
-  free(fullPath);
-  return c;
+    fullPath=getCompleteFilePath(path+1); //ignore the /
+  return fullPath;
 }
+
+
 
 int validVersion(HttpRequest *request)
 {
@@ -69,8 +53,14 @@ int validVersion(HttpRequest *request)
 
 int GETResponse(httpResponse *response,HttpRequest *request)
 {
- 
-  Content *c=getContentByRequest(request);
+  //check version if not correct return html
+  char *fullPath= redirectToCorrectFullPath(request->path);
+  //get accept settings
+  //try the path if not found
+  //get extention with the mimetypes change the fullpath extention to the first and loadContent again
+  //in a loop if not found go to the next change fullpath extention
+  //finally if not found return a 404.
+  Content *c=loadContent(fullPath);
 
   if (c==NULL)
     return 0;

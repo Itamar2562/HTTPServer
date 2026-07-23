@@ -38,6 +38,9 @@ const char *getStatusHeader(int statusCode)
         case 404:
             status="404 Not Found";
             break;
+        case 505:
+            status="505 HTTP Version Not Supported";
+            break;
         default:
             status= "500 Internal Server Error";
             break;

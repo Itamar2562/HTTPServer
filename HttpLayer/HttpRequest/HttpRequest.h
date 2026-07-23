@@ -5,6 +5,7 @@ typedef struct {
 
     char *method;
     char *path;
+    char *fileType;
     char *version;
 
     headerList *headers;

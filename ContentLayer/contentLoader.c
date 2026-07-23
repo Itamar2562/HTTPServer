@@ -24,7 +24,8 @@ FILE *openFile(const char *filePath)
      return f;
 }
 
-char *getFileExtension(char *filepath) {
+char *getFileExtension(char *filepath)
+ {
     char *dot = strrchr(filepath, '.');
     if (!dot || dot == filepath) {
         return NULL; 
@@ -33,6 +34,21 @@ char *getFileExtension(char *filepath) {
     char *extension=(char *)malloc(len+ 1);
     strcpy(extension,dot+1);
     return extension;
+}
+
+char *changeFileExtension(char *filePath, const char *extension)
+{
+    size_t length=strcspn(filePath, ".");
+    if (filePath[length]=='\0') //no dot
+        return NULL; 
+    size_t extensionLength=strlen(extension);
+    char *newPath=(char *)malloc(length + extensionLength +1);
+    if (newPath ==NULL)
+        return NULL;
+    memcpy(newPath, filePath, length);
+    memcpy(newPath, extension, extensionLength);
+    newPath[length +extensionLength]='\0';
+    return newPath;
 }
 
 char *getFileName(char *filePath)

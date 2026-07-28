@@ -115,8 +115,6 @@ int RemoveHeader(headerList *headerList, const char *key)
     return 0;
 }
 
-
-
 char *buildHTTPHeadersFromHeaderList(headerList *hl, size_t *headersLength)
 {
     if (hl==NULL || headersLength ==NULL)
@@ -269,7 +267,9 @@ char *findHeaderValue(headerList *hl, char *key)
         }
     }
     return NULL;
-
 }
+
+
+
 
 

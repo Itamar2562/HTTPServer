@@ -175,17 +175,15 @@ void recvData(int sockfd, char *buffer,size_t length)
 
 
 
-int recvChunk(int clientFd, char *buffer,int *maxLength , int *currLength)
-{
-  int end=0;
- 
-  int remainingSpace=*maxLength-*currLength;
+int recvChunk(int clientFd, char *buffer,size_t *maxLength , size_t *currLength)
+{ 
+  size_t remainingSpace=*maxLength-*currLength;
   if (remainingSpace <=0)
     {
       fprintf(stderr, "got out of buffer room\n");
       return 0;
     }
-  int nbytes=recv(clientFd, buffer+ (*currLength),remainingSpace-1,0);
+  ssize_t nbytes=recv(clientFd, buffer+ (*currLength),remainingSpace-1,0);
   if (nbytes<=0) // got a problem
   {
     if (nbytes==0) // connection closed

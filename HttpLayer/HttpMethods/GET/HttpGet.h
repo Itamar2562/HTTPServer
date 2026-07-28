@@ -3,3 +3,4 @@
 #include "../../HttpRequest/HttpRequest.h"
 
 int GETResponse(httpResponse *response,HttpRequest *request);
+int getNotValidResponse(httpResponse *response, HttpRequest *request);

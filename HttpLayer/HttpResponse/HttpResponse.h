@@ -2,7 +2,7 @@
 
 #include <stdlib.h>
 #include "HttpResponse.h"
-#include "../HttpHeader/HttpHeader.h"
+#include "../HttpHeader/HttpHeader/HttpHeader.h"
 
 
 typedef struct 

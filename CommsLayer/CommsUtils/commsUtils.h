@@ -14,7 +14,7 @@ void printAddresses(struct addrinfo* addresses);
 int GetListenerSocket();
 void sendData(int sockfd, char *data,size_t length);
 int sendDataAll(int sockfd, char *data, size_t length);
-int recvChunk(int clientFd, char *buffer,int *maxLength , int *currLength);
+int recvChunk(int clientFd, char *buffer,size_t *maxLength , size_t *currLength);
 
 int handleNewConnection(int listener , int fd_count, int fd_size, struct pollfd **pollfd);
 

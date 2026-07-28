@@ -13,7 +13,7 @@
 
 
 #include "HttpLayer/HttpResponse/HttpResponse.h"
-#include "HttpLayer/HttpHeader/HttpHeader.h"
+#include "HttpLayer/HttpHeader/HttpHeader/HttpHeader.h"
 #include "HttpLayer/HttpMethods/GET/HttpGet.h"
 #include "HttpLayer/HttpRequest/HttpRequest.h"
 
@@ -21,11 +21,10 @@
 #include "ContentLayer/contentUtils.h"
 
 
-
-HttpRequest *parseRequest(char *request)
+int validVersion(HttpRequest *request)
 {
-    HttpRequest *req=buildHttpRequest(request);
-    return req;
+  if (strcmp(request->version,"HTTP/1.1")==0)
+    return 1;
 }
 
 httpResponse* routeHttpRequest(HttpRequest *request)
@@ -37,7 +36,13 @@ httpResponse* routeHttpRequest(HttpRequest *request)
   if (initializeHttpResponse(response) ==0)
     return NULL;
 
-  if (strcmp(request->method,"GET")==0)
+  if (!validVersion(request))
+  {
+    if (getNotValidResponse(response, request) ==0)
+      return NULL;
+  }
+
+  else if (strcmp(request->method,"GET")==0)
   {
     if (GETResponse(response,request) == 0)
        return NULL;
@@ -107,7 +112,8 @@ char* getHTTPChunk(int clientFd,  client *c , int *errorFlag , int *gotChunk)
    
   char *header=NULL;
   
-  if (*gotChunk){
+  if (*gotChunk)
+  {
     int rest=c->chunkCurrLength - chunkEndIndex;
     header=(char *)malloc(chunkEndIndex+1);
     if (header==NULL)
@@ -148,7 +154,7 @@ void handleClientData(int listener, int *curr_count, struct pollfd *pfds,client 
   {
     printf("pollserver: recv from fd %d: \n%s\n",clientFd,requestHeaders);
     
-    HttpRequest  *parsedRequest= parseRequest(requestHeaders);
+    HttpRequest  *parsedRequest= buildHttpRequest(requestHeaders);
     if (parsedRequest== NULL)
       return;
     httpResponse *response=routeHttpRequest(parsedRequest);

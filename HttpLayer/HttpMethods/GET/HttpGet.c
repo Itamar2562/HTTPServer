@@ -7,7 +7,7 @@
 
 
 
-int buildHttpGetResponse(httpResponse *r ,Content *c , int statusCode, char *version)
+int buildHttpGetResponse(httpResponse *r ,Content *c , int statusCode, char *version, const char *connetion)
 {
   r->body= (char *)malloc(c->data_size +1 );
   if (c->data ==NULL || r->body ==NULL)
@@ -25,7 +25,7 @@ int buildHttpGetResponse(httpResponse *r ,Content *c , int statusCode, char *ver
   addHeader(r->headersList,"Content-Disposition",buffer);
 
   addHeader(r->headersList,"Content-Type",getHttpMimeType(c->type));
-  addHeader(r->headersList, "Connection", "keep-alive");
+  addHeader(r->headersList, "Connection", connetion);
 
   return 1;
 }
@@ -43,13 +43,16 @@ char *redirectToCorrectFullPath(char *path)
 }
 
 
-
-int validVersion(HttpRequest *request)
+int getNotValidResponse(httpResponse *response, HttpRequest *request)
 {
-  if (strcmp(request->version,"HTTP/1.1")==0)
-    return 0;
-}
+    char *fullPath=getCompleteFilePath("VersionNotSupported.html");
+    Content *c=loadContent(fullPath);
 
+    if (c==NULL)
+      return 0;
+    int status= buildHttpGetResponse(response, c, 505, request->version, "close" );
+    return status;
+}
 
 int GETResponse(httpResponse *response,HttpRequest *request)
 {
@@ -67,7 +70,7 @@ int GETResponse(httpResponse *response,HttpRequest *request)
 
   int statusCode=200;
 
-  if (!c->exists && validVersion(request))
+  if (!c->exists)
   {
     char *NotFoundfilePath=getCompleteFilePath("NotFound.html");
     if (NotFoundfilePath ==NULL)
@@ -77,7 +80,7 @@ int GETResponse(httpResponse *response,HttpRequest *request)
     free(NotFoundfilePath);
     statusCode=404;
   }
-  int status= buildHttpGetResponse(response,c, statusCode,request->version);
+  int status= buildHttpGetResponse(response,c, statusCode,request->version,"keep-alive");
   freeContent(c);
   return status;
 }

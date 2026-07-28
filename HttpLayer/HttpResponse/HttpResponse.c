@@ -1,5 +1,5 @@
 #include "HttpResponse.h"
-#include "../HttpHeader/HttpHeader.h"
+#include "../HttpHeader//HttpHeader/HttpHeader.h"
 #include <stdio.h>
 #include <string.h>
 int initializeHttpResponse(httpResponse * response)
@@ -33,6 +33,8 @@ char *buildHttpResponseLine(httpResponse *r, size_t *length)
     if (responseLine ==NULL)
         return NULL;
     strcpy(responseLine, buffer);
+
+    return responseLine;
 }
 
 char *buildCompleteResponse(httpResponse *r, size_t *fullResponseLength)
@@ -41,16 +43,18 @@ char *buildCompleteResponse(httpResponse *r, size_t *fullResponseLength)
         return NULL;
     size_t responseLineLength=0;
     char *responseLine= buildHttpResponseLine(r, &responseLineLength);
+
     size_t responseHeadersLength=0;
     char *responseHeaders=buildHTTPHeadersFromHeaderList(r->headersList,&responseHeadersLength);
-    if (responseHeaders ==NULL)
+
+    if (responseHeaders ==NULL || responseLine ==NULL)
         return NULL;
-    printf("response headers: %s\n",responseHeaders);
+
     (*fullResponseLength)=responseLineLength+responseHeadersLength + r->body_length;
     char *fullResponse =(char *)malloc(*fullResponseLength);
 
-    if (responseHeaders==NULL || fullResponse ==NULL)
-    return NULL;
+    if (fullResponse ==NULL)
+        return NULL;
 
     size_t offset=0;
     memcpy(fullResponse, responseLine, responseLineLength);
@@ -59,6 +63,9 @@ char *buildCompleteResponse(httpResponse *r, size_t *fullResponseLength)
     offset +=  responseHeadersLength;
     memcpy(fullResponse +offset, r->body , r->body_length);
 
+    printf("%.*s\n",(int)(offset+ r->body_length),fullResponse);
     free(responseHeaders);
+    free(responseLine);
     return fullResponse;
 }
+

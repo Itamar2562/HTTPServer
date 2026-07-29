@@ -22,7 +22,7 @@ int initializeKeyList(keyList *kl)
     return kl->keys !=NULL? 1:0;
 }
 
-int addParamKey(keyList *kl,char *key, size_t keyLength, char *value, size_t valueLength)
+int addParamKeyToKeyList(keyList *kl,char *key, size_t keyLength, char *value, size_t valueLength)
 {
     if (kl->key_count>= kl->max_key_size)
     {
@@ -38,12 +38,21 @@ int addParamKey(keyList *kl,char *key, size_t keyLength, char *value, size_t val
     }
 
     int status = BuildParamKey(&kl->keys[kl->key_count], key, keyLength, value, valueLength);
+    kl->key_count++;
     return status;
 }
 
-void printParamKeys(keyList *kl)
+int addDefaultParamKey(keyList *kl)
 {
-    for (int i=0; i<kl->key_count; i++){
-        printf("key: %s\nvalue: %s\n", kl->keys[i].key, kl->keys[i].key_value);
+   return addParamKeyToKeyList(kl,"q",1,"1.0",3);
+}
+
+
+void printKeyList(keyList *kl)
+{
+    for (int i=0; i<kl->key_count; i++)
+    {
+        printParamKey(&kl->keys[i]);
     }
+    printf("\n");
 }

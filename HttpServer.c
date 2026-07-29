@@ -11,6 +11,7 @@
 
 #include "ClientManagmentLayer/clientUtils.h"
 
+#include "UsersManagment/Users.h"
 
 #include "HttpLayer/HttpResponse/HttpResponse.h"
 #include "HttpLayer/HttpHeader/HttpHeader/HttpHeader.h"
@@ -132,22 +133,22 @@ char* getHTTPChunk(int clientFd,  client *c , int *errorFlag , int *gotChunk)
 
 
 
-void handleClientData(int listener, int *curr_count, struct pollfd *pfds,client *clients, int *index)
+void handleClientData(int listener, users *users, int *index)
 {
  
-  int clientFd=pfds[*index].fd;
+  int clientFd=users->pfds[*index].fd;
 
   int gotChunk=0;
   int errorFlag =0;
-  char *requestHeaders=getHTTPChunk(clientFd, &clients[*index], &errorFlag, &gotChunk );
+  char *requestHeaders=getHTTPChunk(clientFd, &users->clients[*index], &errorFlag, &gotChunk );
   if (errorFlag)
   {
       printf("removed socket %d\n",clientFd);
       close(clientFd);
-      delFromPfds(pfds, *index, *curr_count);
-      delFromClients(clients,*index, *curr_count );
+      delFromPfds(users->pfds, *index, users->curr_count);
+      delFromClients(users->clients,*index, users->curr_count );
       (*index)--; //delete swaps the last with curr so we need to check again this pos
-      (*curr_count)--;
+      users->curr_count--;
       return;
   }
   if (gotChunk)
@@ -167,25 +168,25 @@ void handleClientData(int listener, int *curr_count, struct pollfd *pfds,client 
   }
 }
 
-void ProccessConnections(int listener, int *curr_count, int *max_size,struct pollfd **pfds, client **clients, int poll_count){
-  for (int i=0; i<*curr_count && poll_count >0;i++)
+void ProccessConnections(int listener, users *users, int poll_count){
+  for (int i=0; i<users->curr_count && poll_count >0;i++)
   {
 
-    if ((*pfds)[i].revents & (POLLIN | POLLHUP)) // we got new data (smg to read or hang up)
+    if (users->pfds[i].revents & (POLLIN | POLLHUP)) // we got new data (smg to read or hang up)
     {
-      if ((*pfds)[i].fd==listener) //the listener has smg to read (a new conn)
+      if (users->pfds[i].fd==listener) //the listener has smg to read (a new conn)
         {
-          int clientFd=handleNewConnection(listener, *curr_count, *max_size,pfds); 
+          int clientFd=handleNewConnection(listener, users->curr_count, users->max_size,&users->pfds); 
           if (clientFd!=0) // no error in comms layer
           {
-            int status = addToClients(clients,*curr_count, max_size);
+            int status = addToClients(&users->clients,users->curr_count,  &users->max_size);
             if (status) // no need to delete the last pfd on error as we dont increase count
-              (*curr_count)++;
+              users->curr_count++;
           }
         }
 
       else
-        handleClientData(listener, curr_count, *pfds,*clients,&i);
+        handleClientData(listener, users,&i);
       poll_count--;
     }
 
@@ -202,27 +203,35 @@ int main(int argc, int **argv)
     exit(1);
   }
 
-  int max_size=5;
-  int curr_count=1;
-
-  struct pollfd * pfds=(struct pollfd* )malloc(max_size* sizeof(struct pollfd));
-  client *clients = (client *)malloc(max_size * sizeof(client));
-  pfds[0].fd=sockfd;
-  pfds[0].events=POLLIN;
+  users *u=(users *)malloc(sizeof(users));
+  if (u==NULL)
+    return 1;
+  u->max_size=5;
+  u->curr_count=1;
+  u->pfds=(struct pollfd* )malloc(u->max_size* sizeof(struct pollfd));
+  u->clients=(client *)malloc(u->max_size * sizeof(client));
+  if (u->pfds== NULL || u->clients ==NULL)
+  {
+    free(u->pfds);
+    free(u->clients);
+    free(u);
+    return 1;
+  }
+  u->pfds[0].fd=sockfd;
+  u->pfds[0].events=POLLIN;
 
   while (1)
   {
-      int poll_count=poll(pfds, curr_count, -1);
+      int poll_count=poll(u->pfds, u->curr_count, -1);
       if (poll_count==-1){
         perror("poll error");
         exit(1);
       }
 
-      ProccessConnections(sockfd, &curr_count,&max_size, &pfds, &clients, poll_count);
+      ProccessConnections(sockfd, u, poll_count);
   }
   close(sockfd);
-  free(pfds);
-  freeClients(clients, curr_count);
+  freeUsers(u);
 
   return 0;
 }

@@ -8,7 +8,7 @@
 
 int initializeRequest(HttpRequest *request)
 {
-    request->headers=NULL;
+    request->headerList=NULL;
     request->method=NULL;
     request->path=NULL;
     request->version=NULL;
@@ -16,7 +16,7 @@ int initializeRequest(HttpRequest *request)
 
 void freeRequest(HttpRequest *request)
 {
-    free(request->headers);
+    freeHeaderList(request->headerList);
     free(request->method);
     free(request->path);
     free(request->version);
@@ -113,7 +113,7 @@ HttpRequest *buildHttpRequest(char *request)
             freeRequest(ParsedRequest);
             return NULL;
     }
-    ParsedRequest->headers=hl;
+    ParsedRequest->headerList=hl;
 
     ParsedRequest->fileType=getFileExtension(ParsedRequest->path);
     return ParsedRequest;

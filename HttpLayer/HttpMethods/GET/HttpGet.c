@@ -1,6 +1,7 @@
 #include "HttpGet.h"
 #include "../../../ContentLayer/contentUtils.h"
 #include "../../MimeTypes/MimeTypes.h"
+#include "../../HttpHeader/HttpHeadersParameters/HttpHeaderParam/paramList/paramList.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -64,6 +65,16 @@ int GETResponse(httpResponse *response,HttpRequest *request)
   //in a loop if not found go to the next change fullpath extention
   //finally if not found return a 404.
   Content *c=loadContent(fullPath);
+
+  //printHeaders(request->headerList);
+
+  for (int i=0; i<request->headerList->count;i++)
+  {
+    char *key=request->headerList->headers[i].key;
+    if (strcmp(key,"User-Agent")!=0)
+        parseParameterizedHeader(request->headerList->headers[i].value);
+  }
+
 
   if (c==NULL)
     return 0;

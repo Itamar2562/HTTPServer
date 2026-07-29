@@ -8,7 +8,7 @@ typedef struct {
     char *fileType;
     char *version;
 
-    headerList *headers;
+    headerList *headerList;
     
 } HttpRequest;
 

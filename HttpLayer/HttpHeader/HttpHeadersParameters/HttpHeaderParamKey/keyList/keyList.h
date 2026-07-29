@@ -12,7 +12,8 @@ typedef struct {
     int max_key_size;
 } keyList;
 
-int addParamKey(keyList *kl,char *key, size_t keyLength, char *value, size_t valueLength);
+int addParamKeyToKeyList(keyList *kl,char *key, size_t keyLength, char *value, size_t valueLength);
 int initializeKeyList(keyList *kl);
 void freeKeyList(keyList *kl);
-void printParamKeys(keyList *kl);
+void printKeyList(keyList *kl);
+int addDefaultParamKey(keyList *kl);

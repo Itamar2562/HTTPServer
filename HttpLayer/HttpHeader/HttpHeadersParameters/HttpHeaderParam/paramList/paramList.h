@@ -6,7 +6,7 @@
 
 typedef struct
 {
-    parameter *p;
+    parameter *parameters;
 
     int param_count;
     int param_max_size;
@@ -14,3 +14,4 @@ typedef struct
 } paramList;
 
 
+paramList *parseParameterizedHeader(char *value);

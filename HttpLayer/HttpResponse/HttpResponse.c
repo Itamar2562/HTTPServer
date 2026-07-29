@@ -18,7 +18,8 @@ int initializeHttpResponse(httpResponse * response)
 
 void freeHttpResponse(httpResponse *response)
 {
-    freeHeaderList(response->headersList);
+     if (response->headersList!=NULL)
+        freeHeaderList(response->headersList);
     free(response->version);
     free(response);
 }

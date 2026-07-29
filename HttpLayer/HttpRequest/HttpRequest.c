@@ -16,7 +16,8 @@ int initializeRequest(HttpRequest *request)
 
 void freeRequest(HttpRequest *request)
 {
-    freeHeaderList(request->headerList);
+    if (request->headerList!=NULL)
+        freeHeaderList(request->headerList);
     free(request->method);
     free(request->path);
     free(request->version);
@@ -106,7 +107,7 @@ HttpRequest *buildHttpRequest(char *request)
     }
      ParsedRequest->version=version;
     start += offset;
-  
+    
     headerList *hl=buildHeaderListFromHTTPRequest(start);
     if (hl==NULL)
     {

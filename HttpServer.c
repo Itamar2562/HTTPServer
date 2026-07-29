@@ -62,7 +62,6 @@ void SendHttpResponse(int clientFd, httpResponse *response)
       sendDataAll(clientFd, fullResponse, fullResponseLength);
 
   free(fullResponse);
-  freeHttpResponse(response);
 }
 
 int searchForHttpHeadersChunkEnd(client *c , int *chunkEndIndex)
@@ -140,7 +139,7 @@ void handleClientData(int listener, users *users, int *index)
 
   int gotChunk=0;
   int errorFlag =0;
-  char *requestHeaders=getHTTPChunk(clientFd, &users->clients[*index], &errorFlag, &gotChunk );
+  char *RawRequest=getHTTPChunk(clientFd, &users->clients[*index], &errorFlag, &gotChunk );
   if (errorFlag)
   {
       printf("removed socket %d\n",clientFd);
@@ -153,18 +152,24 @@ void handleClientData(int listener, users *users, int *index)
   }
   if (gotChunk)
   {
-    printf("pollserver: recv from fd %d: \n%s\n",clientFd,requestHeaders);
+    printf("pollserver: recv from fd %d: \n%s\n",clientFd,RawRequest);
     
-    HttpRequest  *parsedRequest= buildHttpRequest(requestHeaders);
+    HttpRequest  *parsedRequest= buildHttpRequest(RawRequest);
     if (parsedRequest== NULL)
       return;
     httpResponse *response=routeHttpRequest(parsedRequest);
     if (response ==NULL)
+    {
+      freeRequest(parsedRequest);
+      free(RawRequest);
       return;
+    }
     else
        SendHttpResponse(clientFd, response);
 
-    free(requestHeaders);
+    freeHttpResponse(response);
+    freeRequest(parsedRequest);
+    free(RawRequest);
   }
 }
 

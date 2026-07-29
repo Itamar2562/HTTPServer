@@ -16,7 +16,14 @@ int buildHttpGetResponse(httpResponse *r ,Content *c , int statusCode, char *ver
   memcpy(r->body, c->data, c->data_size);
   r->statusCode=statusCode;
   r->body_length=c->data_size;
-  r->version=version;
+
+  r->version= (char *)malloc(strlen(version) +1);
+  if (r->version ==NULL)
+    {
+      free(r->body);
+      return 0;
+    }
+  strcpy(r->version,version);
 
   char buffer[256];
   snprintf(buffer, sizeof(buffer), "%zu", r->body_length);

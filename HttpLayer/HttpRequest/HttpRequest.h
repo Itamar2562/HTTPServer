@@ -13,6 +13,7 @@ typedef struct {
 } HttpRequest;
 
 HttpRequest *buildHttpRequest(char *request);
+void freeRequest(HttpRequest *request);
 
 
 

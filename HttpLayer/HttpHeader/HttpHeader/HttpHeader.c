@@ -26,28 +26,6 @@ int initializeHeaderList(headerList *h)
     return  h->headers!=NULL ?  1 : 0;
 }
 
-
-const char *getStatusHeader(int statusCode)
-{
-    char *status;
-    switch(statusCode)
-    {
-        case 200:
-            status="200 OK";
-            break;
-        case 404:
-            status="404 Not Found";
-            break;
-        case 505:
-            status="505 HTTP Version Not Supported";
-            break;
-        default:
-            status= "500 Internal Server Error";
-            break;
-    }
-    return status;
-}
-
 void removeCLRF(headerList *headerList)
 {
     header *h=&headerList->headers[headerList->count-1];
@@ -257,7 +235,7 @@ headerList* buildHeaderListFromHTTPRequest(char *headers)
     return hl;
 }
 
-char *findHeaderValue(headerList *hl, char *key)
+char *getHeaderValue(headerList *hl, char *key)
 {
      for (int i=0; i <hl->count; i++)
     {

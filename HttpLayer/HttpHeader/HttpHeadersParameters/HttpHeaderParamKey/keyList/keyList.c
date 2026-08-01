@@ -12,6 +12,7 @@ void freeKeyList(keyList *kl)
         freeParamKey(&kl->keys[i]);
     }
     free(kl->keys);
+    free(kl);
 }
 
 int initializeKeyList(keyList *kl)

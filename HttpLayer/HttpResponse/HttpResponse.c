@@ -24,6 +24,28 @@ void freeHttpResponse(httpResponse *response)
     free(response);
 }
 
+const char *getStatusHeader(int statusCode)
+{
+    char *status;
+    switch(statusCode)
+    {
+        case 200:
+            status="200 OK";
+            break;
+        case 404:
+            status="404 Not Found";
+            break;
+        case 505:
+            status="505 HTTP Version Not Supported";
+            break;
+        default:
+            status= "500 Internal Server Error";
+            break;
+    }
+    return status;
+}
+
+
 char *buildHttpResponseLine(httpResponse *r, size_t *length)
 {
     char buffer[256];
@@ -69,4 +91,7 @@ char *buildCompleteResponse(httpResponse *r, size_t *fullResponseLength)
     free(responseLine);
     return fullResponse;
 }
+
+
+
 

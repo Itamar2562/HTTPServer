@@ -15,3 +15,5 @@ typedef struct
 
 
 paramList *parseParameterizedHeader(char *value);
+void printParameterList(paramList *pl);
+void freeParamList(paramList *pl);

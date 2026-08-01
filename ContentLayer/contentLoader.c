@@ -24,14 +24,16 @@ FILE *openFile(const char *filePath)
      return f;
 }
 
-char *getFileExtension(char *filepath)
+char *getFileExtension(const char *filepath)
  {
-    char *dot = strrchr(filepath, '.');
+    const char *dot = strrchr(filepath, '.');
     if (!dot || dot == filepath) {
         return NULL; 
     }
     size_t len=strlen(dot+1);
     char *extension=(char *)malloc(len+ 1);
+    if (extension ==NULL)
+        return NULL;
     strcpy(extension,dot+1);
     return extension;
 }
@@ -51,9 +53,9 @@ char *changeFileExtension(char *filePath, const char *extension)
     return newPath;
 }
 
-char *getFileName(char *filePath)
+char *getFileName(const char *filePath)
 {
-    char *forwardSlash= strrchr(filePath, '/');
+    const char *forwardSlash= strrchr(filePath, '/');
     if (!forwardSlash )
         return NULL;
 
@@ -61,11 +63,15 @@ char *getFileName(char *filePath)
     if (forwardSlash ==filePath)
     {
         fileName=(char *)malloc(strlen(forwardSlash)+1);
+        if (fileName ==NULL)
+            return NULL;
         strcpy(fileName,forwardSlash+1);
     }
     else{
     size_t len=strlen(forwardSlash+1);
     fileName=(char *)malloc(len+ 1);
+    if (fileName==NULL)
+        return NULL;
     strcpy(fileName,forwardSlash+1);
     }
    
@@ -94,14 +100,38 @@ long getFileSize(FILE *f)
     return  length;
 }
 
-Content *loadContent(char *filePath)
-{   
-    Content *c=(Content *)malloc(sizeof(Content) );
-    initializeContent(c);        
-    FILE *f=openFile(filePath);
-    if (f==NULL)
-        return c;
+char *getCompleteFilePath(const char *path)
+{
+  char *completePath= (char *)malloc(strlen(path)+ strlen(FILE_PATH_START) +1);
+  if (completePath ==NULL)
+    return NULL;
+  strcpy(completePath, FILE_PATH_START);
+  strcat(completePath, path);
 
+  return completePath;
+}
+
+Content *loadContent(const char *filePath)
+{   
+    if (filePath ==NULL)
+        return NULL;
+    char *fullPath=getCompleteFilePath(filePath);
+    if (fullPath ==NULL)
+        return NULL;
+
+    Content *c=(Content *)malloc(sizeof(Content) );
+    if (c== NULL)
+    {
+        free(fullPath);
+        return NULL;
+    }
+    initializeContent(c);        
+    FILE *f=openFile(fullPath);
+    if (f==NULL) //file not found
+    {
+        free(fullPath);
+        return c;
+    }
     long length=getFileSize(f);
     if (length<0 || (unsigned long)length>=SIZE_MAX )
         return NULL;
@@ -110,6 +140,8 @@ Content *loadContent(char *filePath)
      if (c->data==NULL)
         {
             fprintf(stderr,"memory error");
+            freeContent(c);
+            free(fullPath);
             return NULL;
         }
     size_t bytes_read= fread(c->data,1, length, f );
@@ -117,13 +149,23 @@ Content *loadContent(char *filePath)
     if (bytes_read<length)
     {
         fprintf(stderr , "reading file error\n");
+        freeContent(c);
+        free(fullPath);
+        return NULL;
     }
-    c->type=getFileExtension(filePath);
-    c->fileName=getFileName(filePath);
+    c->type=getFileExtension(fullPath);
+    c->fileName=getFileName(fullPath);
+
+    if (c->fileName ==NULL || c->type ==NULL)
+    {
+        freeContent(c);
+        return NULL;
+    }
     
     c->data_size=bytes_read;
     c->exists=1;
     fclose(f);
+    free(fullPath);
     return c;
 }
 
@@ -135,13 +177,3 @@ void freeContent(Content *c)
     free(c);
 }
 
-char *getCompleteFilePath(const char *path)
-{
-  char *completePath= (char *)malloc(strlen(path)+ strlen(FILE_PATH_START) +1);
-  if (completePath ==NULL)
-    return NULL;
-  strcpy(completePath, FILE_PATH_START);
-  strcat(completePath, path);
-
-  return completePath;
-}

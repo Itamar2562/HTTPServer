@@ -18,10 +18,10 @@ typedef struct
 } Content;
 
 
-Content *loadContent(char *filePath);
+Content *loadContent(const char *filePath);
 void freeContent(Content *c);
-char *getCompleteFilePath(const char *path);
-char *getFileExtension(char *filepath);
+char *getFileExtension(const char *filepath);
+char *getFileName(const char *filePath);
 
 
 

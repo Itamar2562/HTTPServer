@@ -20,6 +20,7 @@ void freeParamList(paramList *pl)
         freeParameter(&pl->parameters[i]);
     }
     free(pl->parameters);
+    free(pl);
 }
 
 int addParam(paramList *pl, char *param, size_t paramLength, char *value, size_t valueLength)
@@ -167,6 +168,5 @@ paramList *parseParameterizedHeader(char *value)
       }  
 
     }
-    printParameterList(pl);
     return pl;
 }

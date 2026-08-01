@@ -38,24 +38,20 @@ int buildHttpGetResponse(httpResponse *r ,Content *c , int statusCode, char *ver
   return 1;
 }
 
-char *redirectToCorrectFullPath(char *path)
+const char *redirectToCorrectPath(char *path)
 {
-  char *fullPath;
   if (strcmp(path, "/")==0)
-     fullPath=getCompleteFilePath(DEFAULT_SITE);
+     return DEFAULT_SITE;
   else if (strcmp(path, "/favicon.ico")==0)
-      fullPath=getCompleteFilePath(SITE_ICON);
+      return SITE_ICON;
   else
-    fullPath=getCompleteFilePath(path+1); //ignore the /
-  return fullPath;
+    return path+1; //ignore the /
 }
 
 
 int getNotValidResponse(httpResponse *response, HttpRequest *request)
 {
-    char *fullPath=getCompleteFilePath("VersionNotSupported.html");
-    Content *c=loadContent(fullPath);
-
+    Content *c=loadContent("VersionNotSupported.html");
     if (c==NULL)
       return 0;
     int status= buildHttpGetResponse(response, c, 505, request->version, "close" );
@@ -65,22 +61,25 @@ int getNotValidResponse(httpResponse *response, HttpRequest *request)
 int GETResponse(httpResponse *response,HttpRequest *request)
 {
   //check version if not correct return html
-  char *fullPath= redirectToCorrectFullPath(request->path);
+  const char *filePath= redirectToCorrectPath(request->path);
+  printHeaders(request->headerList);
+  char *RawAcceptParameters= getHeaderValue(request->headerList, "Accept");
+  paramList *pl= parseParameterizedHeader(RawAcceptParameters);
+  printParameterList(pl);
+  freeParamList(pl);
+
   //get accept settings
   //try the path if not found
   //get extention with the mimetypes change the fullpath extention to the first and loadContent again
   //in a loop if not found go to the next change fullpath extention
   //finally if not found return a 404.
-  Content *c=loadContent(fullPath);
 
-  //printHeaders(request->headerList);
+  //get accept settings and try the provided path if it contains a mim type
+  //if not found/donsn't work find the biggest q and search and try it. if not working try the same q
+  //if no q found lower the q and try again.
+  //if found return else return doesn't exists based again on the accept defaults to html
+  Content *c=loadContent(filePath);
 
-  for (int i=0; i<request->headerList->count;i++)
-  {
-    char *key=request->headerList->headers[i].key;
-    if (strcmp(key,"User-Agent")!=0)
-        parseParameterizedHeader(request->headerList->headers[i].value);
-  }
 
 
   if (c==NULL)
@@ -90,12 +89,8 @@ int GETResponse(httpResponse *response,HttpRequest *request)
 
   if (!c->exists)
   {
-    char *NotFoundfilePath=getCompleteFilePath("NotFound.html");
-    if (NotFoundfilePath ==NULL)
-      return 0;
     freeContent(c);
-    c=loadContent(NotFoundfilePath);
-    free(NotFoundfilePath);
+    c=loadContent("NotFound.html");
     statusCode=404;
   }
   int status= buildHttpGetResponse(response,c, statusCode,request->version,"keep-alive");

@@ -22,7 +22,7 @@ void freeHeaderList(headerList *hl);
 void addHeader(headerList *headerList, const char *key, const char *value);
 int RemoveHeader(headerList *headerList, const char *key);
 const char *getStatusHeader(int statusCode);
-char *findHeaderValue(headerList *hl, char *key);
+char *getHeaderValue(headerList *hl, char *key);
 char *buildHTTPHeadersFromHeaderList(headerList *hl, size_t *headersLength);
 void printHeaders(headerList *headerList);
 headerList* buildHeaderListFromHTTPRequest(char *headers);

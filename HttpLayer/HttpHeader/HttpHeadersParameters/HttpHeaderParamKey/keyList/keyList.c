@@ -3,6 +3,8 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
+#include <string.h>
 
 
 void freeKeyList(keyList *kl)
@@ -56,4 +58,21 @@ void printKeyList(keyList *kl)
         printParamKey(&kl->keys[i]);
     }
     printf("\n");
+}
+
+double getQuilityKeyValue(keyList *kl)
+{
+    for (int i=0; i<kl->key_count ; i++)
+    {
+        if (strcmp(kl->keys[i].key,"q")==0) 
+        {
+            char *value = kl->keys[i].key_value;
+            char *endPtr;
+            double q = strtod(value, &endPtr);
+            if (errno == ERANGE || endPtr == value)
+                return -1;
+            return q;
+        }
+    }
+    return -1; 
 }

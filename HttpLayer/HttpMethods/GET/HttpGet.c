@@ -2,6 +2,7 @@
 #include "../../../ContentLayer/contentUtils.h"
 #include "../../MimeTypes/MimeTypes.h"
 #include "../../HttpHeader/HttpHeadersParameters/HttpHeaderParam/paramList/paramList.h"
+#include "../../requestPreferences/requestPreferences.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -43,7 +44,7 @@ const char *redirectToCorrectPath(char *path)
   if (strcmp(path, "/")==0)
      return DEFAULT_SITE;
   else if (strcmp(path, "/favicon.ico")==0)
-      return SITE_ICON;
+    return SITE_ICON;
   else
     return path+1; //ignore the /
 }
@@ -58,42 +59,76 @@ int getNotValidResponse(httpResponse *response, HttpRequest *request)
     return status;
 }
 
+Content *getContentBasedOnAcceptHeader(const char * filePath, HttpRequest *request)
+{
+   
+    paramList *pl =getAcceptMimeTypeParamList(request);
+    if (pl==NULL)
+      return NULL;
+
+    for (int i=0; i< pl->param_count ; i++)
+    {
+      const char *extention = getExtensionByMimeType (pl->parameters[i].parameter ); 
+      if (extention ==NULL)
+        continue;
+      char *fullPath = changeFileExtension(filePath , extention);
+      if (fullPath ==NULL)
+        continue;
+      printf("%s\n",fullPath);
+      Content *c=loadContent(fullPath);
+      free(fullPath);
+      if (c==NULL)
+      {
+        freeParamList(pl);
+        return NULL;
+      }
+      if (c->exists)
+      {
+        freeParamList(pl);
+        return c;
+      }
+      
+    }
+    freeParamList(pl);
+    return NULL;
+}
+
+int getNotFoundResponse(httpResponse *response,HttpRequest *request)
+{
+  Content *c=getContentBasedOnAcceptHeader(NOT_FOUND_NAME , request);  //first search by accept
+  if (c==NULL)
+  {
+    char* fullpath= changeFileExtension(NOT_FOUND_NAME, "html"); //fallback to html
+    c= loadContent(fullpath);
+    if (c==NULL)
+      return 0;
+  }
+  int status = buildHttpGetResponse(response, c, 404,request->version, "keep-alive");
+  return status;
+}
+
+
 int GETResponse(httpResponse *response,HttpRequest *request)
 {
   //check version if not correct return html
   const char *filePath= redirectToCorrectPath(request->path);
   printHeaders(request->headerList);
-  char *RawAcceptParameters= getHeaderValue(request->headerList, "Accept");
-  paramList *pl= parseParameterizedHeader(RawAcceptParameters);
-  printParameterList(pl);
-  freeParamList(pl);
 
-  //get accept settings
-  //try the path if not found
-  //get extention with the mimetypes change the fullpath extention to the first and loadContent again
-  //in a loop if not found go to the next change fullpath extention
-  //finally if not found return a 404.
-
-  //get accept settings and try the provided path if it contains a mim type
-  //if not found/donsn't work find the biggest q and search and try it. if not working try the same q
-  //if no q found lower the q and try again.
-  //if found return else return doesn't exists based again on the accept defaults to html
   Content *c=loadContent(filePath);
-
-
-
   if (c==NULL)
-    return 0;
+    return getNotFoundResponse (response, request);
 
-  int statusCode=200;
-
-  if (!c->exists)
+  if (!c->exists) 
   {
-    freeContent(c);
-    c=loadContent("NotFound.html");
-    statusCode=404;
+    c=getContentBasedOnAcceptHeader(filePath , request);
+    if (c==NULL)
+    {
+      int status = getNotFoundResponse (response, request);
+      return status;
+    }
   }
-  int status= buildHttpGetResponse(response,c, statusCode,request->version,"keep-alive");
+
+  int status= buildHttpGetResponse(response,c, 200,request->version,"keep-alive");
   freeContent(c);
   return status;
 }

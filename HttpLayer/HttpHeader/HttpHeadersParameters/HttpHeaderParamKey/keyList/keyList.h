@@ -17,3 +17,4 @@ int initializeKeyList(keyList *kl);
 void freeKeyList(keyList *kl);
 void printKeyList(keyList *kl);
 int addDefaultParamKey(keyList *kl);
+double getQuilityKeyValue(keyList *kl);

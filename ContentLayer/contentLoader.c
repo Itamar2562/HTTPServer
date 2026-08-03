@@ -38,18 +38,24 @@ char *getFileExtension(const char *filepath)
     return extension;
 }
 
-char *changeFileExtension(char *filePath, const char *extension)
+int hasFileExtension(const char *filePath){
+    const char *dot=strrchr(filePath, '.');
+        if (!dot || dot==filePath)
+            return 0;
+    return 1;
+}
+
+char *changeFileExtension(const char *filePath, const char *extension)
 {
     size_t length=strcspn(filePath, ".");
-    if (filePath[length]=='\0') //no dot
-        return NULL; 
     size_t extensionLength=strlen(extension);
-    char *newPath=(char *)malloc(length + extensionLength +1);
+    char *newPath=(char *)malloc(length + extensionLength +1 +1); //+1 for . and then for \0
     if (newPath ==NULL)
         return NULL;
     memcpy(newPath, filePath, length);
-    memcpy(newPath, extension, extensionLength);
-    newPath[length +extensionLength]='\0';
+    memcpy (newPath +length , ".", 1);
+    memcpy(newPath + length+1, extension, extensionLength);
+    newPath[length +extensionLength+1]='\0';
     return newPath;
 }
 
@@ -115,6 +121,9 @@ Content *loadContent(const char *filePath)
 {   
     if (filePath ==NULL)
         return NULL;
+    if (!hasFileExtension(filePath))
+        return NULL;
+    
     char *fullPath=getCompleteFilePath(filePath);
     if (fullPath ==NULL)
         return NULL;

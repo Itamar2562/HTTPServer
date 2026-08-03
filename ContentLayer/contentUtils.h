@@ -4,6 +4,7 @@
 
 #define FILE_PATH_START "ContentLayer/content/"
 #define DEFAULT_SITE "index.html"
+#define NOT_FOUND_NAME "NotFound"
 #define SITE_ICON "home.png"
 
 
@@ -22,6 +23,7 @@ Content *loadContent(const char *filePath);
 void freeContent(Content *c);
 char *getFileExtension(const char *filepath);
 char *getFileName(const char *filePath);
+char *changeFileExtension(const char *filePath, const char *extension);
 
 
 

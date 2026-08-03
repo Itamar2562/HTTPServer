@@ -170,3 +170,47 @@ paramList *parseParameterizedHeader(char *value)
     }
     return pl;
 }
+
+void mergeSortRecursion(paramList *pl, int l, int r)
+{
+    if (l<r)
+    {
+         int m = l+ (r-l)/2;
+
+        mergeSortRecursion(pl,l,m);
+        mergeSortRecursion(pl, m+1 , r);
+
+        int left_length= m-l+1;
+        int right_length = r-m;
+
+        parameter temp_left[left_length];
+        parameter temp_right[right_length];
+
+        for (int i=0; i<left_length; i++)
+            temp_left[i]=pl->parameters[l+i];
+
+        for (int i=0; i<right_length; i++)
+            temp_right[i]=pl->parameters[m +1 +i];
+        
+        int i,j,k;
+        for (i=0, j=0, k=l; k<=r; k++)
+        {
+            if ((i<left_length) && (j>=right_length || (getQuilityKeyValue(temp_left[i].kl) >= getQuilityKeyValue(temp_right[j].kl) )) )
+            {
+                pl->parameters[k]=temp_left[i];
+                i++;
+            }
+            else{
+                pl->parameters[k]=temp_right[j];
+                j++;
+            }
+        }
+    }
+   
+}
+
+void sortParameterizedHeaderByQuality(paramList *pl)
+{
+  mergeSortRecursion(pl, 0, pl->param_count -1);   
+}
+

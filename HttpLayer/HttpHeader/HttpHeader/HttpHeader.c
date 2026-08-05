@@ -235,7 +235,7 @@ headerList* buildHeaderListFromHTTPRequest(char *headers)
     return hl;
 }
 
-char *getHeaderValue(headerList *hl, char *key)
+char *getHeaderValue(headerList *hl, const char *key)
 {
      for (int i=0; i <hl->count; i++)
     {

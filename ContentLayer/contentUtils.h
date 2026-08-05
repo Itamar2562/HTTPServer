@@ -7,6 +7,10 @@
 #define NOT_FOUND_NAME "NotFound"
 #define SITE_ICON "home.png"
 
+typedef struct {
+    const char *fileNmae;
+    const char *extension;
+} ContentMap;
 
 typedef struct 
 {

@@ -68,26 +68,33 @@ Content *getContentBasedOnAcceptHeader(const char * filePath, HttpRequest *reque
 
     for (int i=0; i< pl->param_count ; i++)
     {
-      const char *extention = getExtensionByMimeType (pl->parameters[i].parameter ); 
-      if (extention ==NULL)
+      extensionList *el = getExtensionByMimeType (pl->parameters[i].parameter ); 
+      if (el ==NULL)
         continue;
-      char *fullPath = changeFileExtension(filePath , extention);
-      if (fullPath ==NULL)
-        continue;
-      printf("%s\n",fullPath);
-      Content *c=loadContent(fullPath);
-      free(fullPath);
-      if (c==NULL)
+      for (int i=0; i<el->length; i++)
       {
-        freeParamList(pl);
-        return NULL;
+        char *fullPath = changeFileExtension(filePath , el->extensions[i]);
+        if (fullPath ==NULL)
+          continue;
+        printf("%s\n",fullPath);
+
+        Content *c=loadContent(fullPath);
+        free(fullPath);
+
+        if (c==NULL)
+        {
+          freeParamList(pl);
+          freeExtensionList(el);
+          return NULL;
+        }
+        if (c->exists)
+        {
+          freeExtensionList(el);
+          freeParamList(pl);
+          return c;
+        }
       }
-      if (c->exists)
-      {
-        freeParamList(pl);
-        return c;
-      }
-      
+      freeExtensionList(el);
     }
     freeParamList(pl);
     return NULL;

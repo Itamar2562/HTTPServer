@@ -1,23 +1,9 @@
 #include "requestPreferences.h"
 #include <stdlib.h>
 
-
-paramList *getAcceptMimeTypeParamList(HttpRequest *request)
+static paramList *getAcceptParamList(HttpRequest *request, const char *headerName)
 {
-    char *RawAcceptParameters= getHeaderValue(request->headerList, "Accept");
-    if (RawAcceptParameters ==NULL)
-      return NULL;
-
-    paramList *pl= parseParameterizedHeader(RawAcceptParameters);
-    if (pl==NULL)
-      return NULL;
-    sortParameterizedHeaderByQuality(pl);
-    return pl;
-}
-
-paramList *getAcceptEncodingParamList(HttpRequest *request)
-{
-  char *RawAcceptParameters= getHeaderValue(request->headerList, "Accept-Encoding");
+  char *RawAcceptParameters= getHeaderValue(request->headerList, headerName);
   if (RawAcceptParameters ==NULL)
     return NULL;
 
@@ -25,3 +11,16 @@ paramList *getAcceptEncodingParamList(HttpRequest *request)
   sortParameterizedHeaderByQuality(pl);
   return pl;
 }
+
+
+
+paramList *getAcceptMimeTypeParamList(HttpRequest *request)
+{
+  return getAcceptParamList(request, "Accept");
+}
+
+paramList *getAcceptEncodingParamList(HttpRequest *request)
+{
+  return getAcceptParamList(request, "Accept-Encoding");
+}
+

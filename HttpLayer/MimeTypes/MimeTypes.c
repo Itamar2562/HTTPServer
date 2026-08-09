@@ -89,9 +89,9 @@ int buildWildCardExtensionList(extensionList *el ,const char *wildCard)
 extensionList *getExtensionByMimeType(const char *mimeType)
 { 
   extensionList *el = (extensionList *)malloc(sizeof(extensionList));
-  initializeExtensionList(el);
   if (el==NULL)
     return NULL;
+  initializeExtensionList(el);
 
   if (strcmp(mimeType, "*/*")==0)
   {

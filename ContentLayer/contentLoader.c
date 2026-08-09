@@ -2,7 +2,7 @@
 #include "contentUtils.h"
 #include <string.h>
 #include <stdint.h>
-
+#include <limits.h>
 
 void initializeContent(Content *c)
 {
@@ -115,6 +115,12 @@ char *getCompleteFilePath(const char *path)
   strcat(completePath, path);
 
   return completePath;
+}
+
+//in order to prevent file traversal attacks i am
+//gonna use realpath to check if the filepath is secure to use 
+int isPathSafe(){
+    ;
 }
 
 Content *loadContent(const char *filePath)

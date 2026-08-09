@@ -26,6 +26,7 @@ int validVersion(HttpRequest *request)
 {
   if (strcmp(request->version,"HTTP/1.1")==0)
     return 1;
+  return 0;
 }
 
 httpResponse* routeHttpRequest(HttpRequest *request)
@@ -210,7 +211,10 @@ int main(int argc, int **argv)
 
   users *u=(users *)malloc(sizeof(users));
   if (u==NULL)
+  {
+    close(sockfd);
     return 1;
+  }
   u->max_size=5;
   u->curr_count=1;
   u->pfds=(struct pollfd* )malloc(u->max_size* sizeof(struct pollfd));
@@ -220,6 +224,7 @@ int main(int argc, int **argv)
     free(u->pfds);
     free(u->clients);
     free(u);
+    close (sockfd);
     return 1;
   }
   u->pfds[0].fd=sockfd;

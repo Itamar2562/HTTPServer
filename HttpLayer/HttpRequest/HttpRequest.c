@@ -43,19 +43,16 @@ char * extractHttpRequestMethod(char *headers, size_t *offset)
 
 char *extractHeaderFilePath(char *header , size_t *offset)
 {
-    if (header==NULL || header[0]=='\0')
+    if (header==NULL || header[0]=='\0' || header[0] !='/')
         return NULL;
-    char * startPtr=strchr(header, '/'); //get the ptr to the first /
-    if (startPtr ==NULL) // didnt find it
-        return NULL;
-    size_t length=strcspn(startPtr, " "); //get the length until the second space
+    size_t length=strcspn(header, " "); //get the length until the second space
 
     char *filePath= (char *)malloc(length + 1);
     if (filePath ==NULL)
         return NULL;
-    strncpy(filePath, startPtr,length);
+    strncpy(filePath, header,length);
     filePath[length]='\0';
-    if (startPtr[length]=='\0') //didn't find whitespace
+    if (header[length]=='\0') //didn't find whitespace
         (*offset) =length;
     else
         (*offset) =length+1 ; //skip the whitespace

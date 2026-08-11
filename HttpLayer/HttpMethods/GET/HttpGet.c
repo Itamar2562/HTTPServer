@@ -43,8 +43,6 @@ const char *redirectToCorrectPath(char *path)
 {
   if (strcmp(path, "/")==0)
      return DEFAULT_SITE;
-  // else if (strcmp(path, "/favicon.ico")==0)
-  //   return SITE_ICON;
   else
     return path+1; //ignore the /
 }

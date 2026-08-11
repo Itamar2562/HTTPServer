@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <limits.h>
+#include <errno.h>
 
 void initializeContent(Content *c)
 {
@@ -116,20 +117,75 @@ char *getCompleteFilePath(const char *path)
 
   return completePath;
 }
+char *omitFileName(const char *filePath)
+{
+    size_t length;
+    const char *lastSlash = strrchr(filePath, '/');
+    if (lastSlash ==NULL)
+        length=0;
+    else
+        length = lastSlash - filePath;
+    char *fullDir=(char *)malloc(length +1);
+    if (fullDir ==NULL)
+        return NULL;
+    memcpy(fullDir, filePath , length);
+    fullDir[length]='\0';
+    return fullDir;
+}
 
-//in order to prevent file traversal attacks i am
-//gonna use realpath to check if the filepath is secure to use 
-int isPathSafe(){
-    ;
+//I removed filename for realPath bc realpath fails if file doesn't exists
+//so instead I check if the dir itself exists and is safe
+int isPathSafe(const char *userFilepath)
+{   
+    char *dir = omitFileName(userFilepath);
+    if (dir== NULL)
+        return 0;
+    char *basePath = realpath(FILE_PATH_START, NULL);
+    if (basePath ==NULL)
+    {
+        perror("realpath base");
+        return 0;
+    }
+    char *fullPath = (char *)malloc(strlen(basePath) +1 + strlen(dir) +1 );
+    if (fullPath ==NULL)
+    {
+        perror("fullPath");
+        free(basePath);
+        free(dir);
+        return 0;
+    }
+    sprintf(fullPath, "%s/%s", basePath , dir);
+
+    char *realFullPath = realpath(fullPath , NULL);
+    free(fullPath);
+    free(dir);
+    if (realFullPath ==NULL)
+    {
+        perror ("realpath FullPath");
+        return 0;
+    }
+
+    size_t baseLen= strlen(basePath);
+
+    if (strncmp(realFullPath , basePath , baseLen) !=0 || 
+    (realFullPath[baseLen] !='/' && realFullPath[baseLen] !='\0'))
+    {
+        perror("base paths aren't the same");
+        free(basePath);
+        free(realFullPath);
+        return 0;
+    }    
+   free(realFullPath);
+   free(basePath);
+   return 1;
 }
 
 Content *loadContent(const char *filePath)
 {   
     if (filePath ==NULL)
+        return NULL; 
+    if (!isPathSafe(filePath))
         return NULL;
-    if (!hasFileExtension(filePath))
-        return NULL;
-    
     char *fullPath=getCompleteFilePath(filePath);
     if (fullPath ==NULL)
         return NULL;

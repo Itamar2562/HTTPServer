@@ -64,21 +64,22 @@ httpResponse* routeHttpRequest(client *client)
   }
   else if (strcmp(request->method,"POST")==0)
   {
-    if (client->state == READING_HEADERS){
-       switchToReadingBodyState(client, request);
-       return NULL;
-    }
+      freeHttpResponse(response);
+      switchToReadingBodyState(client, request);
+      return NULL;
   }
-  else
+  else{
+    freeHttpResponse(response);
     return NULL;
+  }
 
   return response;
 }
 
-httpResponse *routeHttpRequestBody(client *c, const char *body)
+httpResponse *routeHttpRequestWithBody(client *c, const char *body)
 {
-  if (strcmp(c->request->method, "POST")==0)
-    printf("the body is %s\n",body);
+  if (strcmp(c->request->method, "POST")==0);
+    //POSTResponse(c->request, body);
   return NULL;
 }
 
@@ -120,21 +121,34 @@ int extractByLength(client *c, int *chunkEndIndex)
   return 0;
 }
 
-char *getChunkFromBuffer(client *c, int chunkEndIndex , int *errorFlag)
+char *getChunkFromBuffer(client *c, int chunkEndIndex)
 {
     int rest=c->chunkCurrLength - chunkEndIndex;
     char *chunk=(char *)malloc(chunkEndIndex+1);
     if (chunk==NULL)
-    {
-        (*errorFlag)=1;
-        return NULL;
-    }
+      return NULL;
     strncpy(chunk, c->buffer, chunkEndIndex);
     chunk[chunkEndIndex]='\0';
     memcpy(c->buffer, c->buffer+chunkEndIndex, rest);
     (c->chunkCurrLength)=rest;
     c->buffer[rest]='\0';
     return chunk;
+}
+
+char *findChunkInBuffer(client *c , int *gotChunk)
+{
+    int chunkEndIndex= 0;
+    if (c->state==READING_HEADERS)
+      (*gotChunk)= searchForHttpHeadersChunkEnd(c, &chunkEndIndex);
+    else  
+      (*gotChunk) = extractByLength(c, &chunkEndIndex);
+     
+    if (*gotChunk)
+    {
+    char *chunk = getChunkFromBuffer(c, chunkEndIndex);
+    return chunk;
+    }
+    return NULL;
 }
 
 char* getHTTPChunk(int clientFd,  client *c , int *errorFlag , int *gotChunk)
@@ -144,9 +158,7 @@ char* getHTTPChunk(int clientFd,  client *c , int *errorFlag , int *gotChunk)
     {
       (*errorFlag)=1;
       return NULL;
-    }
-    int chunkEndIndex=0;
-    
+    }    
     if (c->chunkCurrLength+1>=c->chunkMaxLength)
     {
       c->chunkMaxLength*=2;
@@ -164,18 +176,18 @@ char* getHTTPChunk(int clientFd,  client *c , int *errorFlag , int *gotChunk)
         return NULL;
       }
     }
+    return findChunkInBuffer(c,gotChunk);
 
-  if (c->state==READING_HEADERS)
-      (*gotChunk)= searchForHttpHeadersChunkEnd(c, &chunkEndIndex);
-  else  
-    (*gotChunk) = extractByLength(c, &chunkEndIndex);
-     
-  if (*gotChunk)
-  {
-   char *chunk = getChunkFromBuffer(c, chunkEndIndex , errorFlag);
-   return chunk;
-  }
-  return NULL;
+}
+
+void disconnectUser(int clientFd, users *users, int *index)
+{
+  printf("removed socket %d\n",clientFd);
+    close(clientFd);
+    delFromPfds(users->pfds, *index, users->curr_count);
+    delFromClients(users->clients,*index, users->curr_count );
+    (*index)--; //delete swaps the last with curr so we need to check again this pos
+    users->curr_count--;
 }
 
 char *getHttpChunkWrapper(int clientFd,users *users ,client *client, int *index, int *gotChunk)
@@ -185,16 +197,15 @@ char *getHttpChunkWrapper(int clientFd,users *users ,client *client, int *index,
   char *RawChunk=getHTTPChunk(clientFd, client, &errorFlag, gotChunk );
   if (errorFlag)
   {
-      printf("removed socket %d\n",clientFd);
-      close(clientFd);
-      delFromPfds(users->pfds, *index, users->curr_count);
-      delFromClients(users->clients,*index, users->curr_count );
-      (*index)--; //delete swaps the last with curr so we need to check again this pos
-      users->curr_count--;
-      return NULL;
+    disconnectUser(clientFd, users, index);
+    return NULL;
+
   }
   return RawChunk;
 }
+
+
+
 
 void handleClientData(int listener, users *users, int *index)
 {
@@ -204,8 +215,13 @@ void handleClientData(int listener, users *users, int *index)
   client *client =&users->clients[*index];
   int gotChunk =0;
   char *RawChunk = getHttpChunkWrapper(clientFd,users,client, index , &gotChunk);
-  if (gotChunk)
+  while (gotChunk) //go through the buffer (the loop doesn't do anymore recv it searches for chunks in the buffer)
   {
+    if (RawChunk ==NULL)
+      RawChunk = findChunkInBuffer(client , &gotChunk);
+
+    if (!gotChunk || RawChunk ==NULL)
+      continue;
     printf("pollserver: recv from fd %d: \n%s\n",clientFd,RawChunk);
     
     httpResponse* response = NULL;
@@ -213,51 +229,62 @@ void handleClientData(int listener, users *users, int *index)
     {
       client->request= buildHttpRequest(RawChunk);
       if (client->request== NULL)
-        return;
+        continue;;
       response=routeHttpRequest(client);
-
     }
     else //got full body
     {
-      response=routeHttpRequestBody(client,RawChunk);
+      response=routeHttpRequestWithBody(client,RawChunk);
       client->state=READING_HEADERS;
       free(RawChunk);
-      return;
+      continue;;
     }
-
     //there is a body to the request
     if (client->state == READING_BODY)
     {
       free(RawChunk);
+      RawChunk = NULL;
+      if (client->contentLength <=0) //there is no body
+      {
+          freeRequest(client->request);
+          client->state=READING_HEADERS;
+          continue;
+      }
+
       //the body is fully in buffer already
-      if (client->chunkCurrLength>=client->contentLength)
+      else if (client->chunkCurrLength>0 && client->chunkCurrLength>=client->contentLength)
       {
         int gotChunk =0;
-        RawChunk = getHttpChunkWrapper(clientFd,users,client,  index , &gotChunk);  
-        if (gotChunk)
-          response=routeHttpRequestBody(client,RawChunk);
+        RawChunk = findChunkInBuffer(client,&gotChunk);  
+        if (gotChunk){
+          response=routeHttpRequestWithBody(client,RawChunk);
+          client->state=READING_HEADERS;
+        }
         else
-          return;
+          continue;;
       }
-      else
+      else //body not fully in buffer, return to poll
         return;
     }
 
     if (response ==NULL)
     {
-    freeRequest(client->request);
-    free(RawChunk);
-    return;
+      freeRequest(client->request);
+      free(RawChunk);
+      RawChunk = NULL;
+      continue;
     }
     else
       SendHttpResponse(clientFd, response);
       
-    
     freeHttpResponse(response);
     freeRequest(client->request);
     client->request=NULL;
     free(RawChunk);
+  
+    RawChunk =NULL;
   }
+
 }
 
 void ProccessConnections(int listener, users *users, int poll_count){
@@ -319,7 +346,8 @@ int main(int argc, char **argv)
   while (1)
   {
       int poll_count=poll(u->pfds, u->curr_count, -1);
-      if (poll_count==-1){
+      if 
+      (poll_count==-1){
         perror("poll error");
         exit(1);
       }

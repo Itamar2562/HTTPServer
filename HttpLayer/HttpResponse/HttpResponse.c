@@ -7,6 +7,7 @@ int initializeHttpResponse(httpResponse * response)
     response->statusCode=200;
     response->body_length=0;
     response->body=NULL;
+    response->version=NULL;
     response->headersList=(headerList *)malloc(sizeof(headerList));
     if (response->headersList ==NULL)
         return 0;
@@ -18,6 +19,8 @@ int initializeHttpResponse(httpResponse * response)
 
 void freeHttpResponse(httpResponse *response)
 {
+    if (response ==NULL)
+        return;
      if (response->headersList!=NULL)
         freeHeaderList(response->headersList);
     free(response->version);

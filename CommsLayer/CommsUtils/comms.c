@@ -195,9 +195,7 @@ int recvChunk(int clientFd, char *buffer,size_t *maxLength , size_t *currLength)
   (*currLength) +=nbytes;
   buffer[*currLength]='\0';
   return 1;
-
 }
-
 
 int handleNewConnection(int listener , int fd_count, int fd_size, struct pollfd **pollfd)
 {

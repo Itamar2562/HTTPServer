@@ -19,7 +19,7 @@
 #include "HttpLayer/HttpRequest/HttpRequest.h"
 
 
-#include "ContentLayer/contentUtils.h"
+#include "ContentLayer/ContentLoader/ContentLoader.h"
 
 
 int validVersion(HttpRequest *request)
@@ -29,8 +29,21 @@ int validVersion(HttpRequest *request)
   return 0;
 }
 
-httpResponse* routeHttpRequest(HttpRequest *request)
+int switchToReadingBodyState(client *client, HttpRequest *request)
 {
+  char *str_value = getHeaderValue(request->headerList, "Content-Length");
+  if (str_value ==NULL)
+    return 0;
+  long int contentLength = strtol(str_value, NULL ,10);
+  client->contentLength = contentLength;
+  client->state = READING_BODY;
+  return 1;
+}
+
+
+httpResponse* routeHttpRequest(client *client)
+{
+  HttpRequest *request = client->request;
   httpResponse *response = (httpResponse *) malloc( sizeof(httpResponse));
   if (response ==NULL)
     return NULL;
@@ -49,11 +62,27 @@ httpResponse* routeHttpRequest(HttpRequest *request)
     if (GETResponse(response,request) == 0)
        return NULL;
   }
-  else;
+  else if (strcmp(request->method,"POST")==0)
+  {
+    if (client->state == READING_HEADERS){
+       switchToReadingBodyState(client, request);
+       return NULL;
+    }
+  }
+  else
+    return NULL;
 
   return response;
-
 }
+
+httpResponse *routeHttpRequestBody(client *c, const char *body)
+{
+  if (strcmp(c->request->method, "POST")==0)
+    printf("the body is %s\n",body);
+  return NULL;
+}
+
+
 
 void SendHttpResponse(int clientFd, httpResponse *response)
 {
@@ -80,10 +109,37 @@ int searchForHttpHeadersChunkEnd(client *c , int *chunkEndIndex)
     return foundChunk;
 }
 
+int extractByLength(client *c, int *chunkEndIndex)
+{
+  if (c->chunkCurrLength >= c->contentLength)
+  {
+    (*chunkEndIndex) = c->contentLength;
+    c->contentLength=0;
+    return 1;
+  }
+  return 0;
+}
+
+char *getChunkFromBuffer(client *c, int chunkEndIndex , int *errorFlag)
+{
+    int rest=c->chunkCurrLength - chunkEndIndex;
+    char *chunk=(char *)malloc(chunkEndIndex+1);
+    if (chunk==NULL)
+    {
+        (*errorFlag)=1;
+        return NULL;
+    }
+    strncpy(chunk, c->buffer, chunkEndIndex);
+    chunk[chunkEndIndex]='\0';
+    memcpy(c->buffer, c->buffer+chunkEndIndex, rest);
+    (c->chunkCurrLength)=rest;
+    c->buffer[rest]='\0';
+    return chunk;
+}
 
 char* getHTTPChunk(int clientFd,  client *c , int *errorFlag , int *gotChunk)
 { 
-    int status = recvChunk(clientFd , c->buffer, &c->chunkMaxLength, &c->chunkCurrLength);
+     int status = recvChunk(clientFd , c->buffer, &c->chunkMaxLength, &c->chunkCurrLength);
     if (!status)  
     {
       (*errorFlag)=1;
@@ -109,38 +165,24 @@ char* getHTTPChunk(int clientFd,  client *c , int *errorFlag , int *gotChunk)
       }
     }
 
-  (*gotChunk)= searchForHttpHeadersChunkEnd(c, &chunkEndIndex);
-   
-  char *header=NULL;
-  
+  if (c->state==READING_HEADERS)
+      (*gotChunk)= searchForHttpHeadersChunkEnd(c, &chunkEndIndex);
+  else  
+    (*gotChunk) = extractByLength(c, &chunkEndIndex);
+     
   if (*gotChunk)
   {
-    int rest=c->chunkCurrLength - chunkEndIndex;
-    header=(char *)malloc(chunkEndIndex+1);
-    if (header==NULL)
-    {
-        (*errorFlag)=1;
-        return NULL;
-    }
-    strncpy(header, c->buffer, chunkEndIndex);
-    header[chunkEndIndex]='\0';
-    memcpy(c->buffer, c->buffer+chunkEndIndex, rest);
-    (c->chunkCurrLength)=rest;
-    c->buffer[rest]='\0';
+   char *chunk = getChunkFromBuffer(c, chunkEndIndex , errorFlag);
+   return chunk;
   }
-  return header;
+  return NULL;
 }
 
-
-
-void handleClientData(int listener, users *users, int *index)
+char *getHttpChunkWrapper(int clientFd,users *users ,client *client, int *index, int *gotChunk)
 {
- 
-  int clientFd=users->pfds[*index].fd;
 
-  int gotChunk=0;
   int errorFlag =0;
-  char *RawRequest=getHTTPChunk(clientFd, &users->clients[*index], &errorFlag, &gotChunk );
+  char *RawChunk=getHTTPChunk(clientFd, client, &errorFlag, gotChunk );
   if (errorFlag)
   {
       printf("removed socket %d\n",clientFd);
@@ -149,28 +191,72 @@ void handleClientData(int listener, users *users, int *index)
       delFromClients(users->clients,*index, users->curr_count );
       (*index)--; //delete swaps the last with curr so we need to check again this pos
       users->curr_count--;
-      return;
+      return NULL;
   }
+  return RawChunk;
+}
+
+void handleClientData(int listener, users *users, int *index)
+{
+ 
+  int clientFd=users->pfds[*index].fd;
+
+  client *client =&users->clients[*index];
+  int gotChunk =0;
+  char *RawChunk = getHttpChunkWrapper(clientFd,users,client, index , &gotChunk);
   if (gotChunk)
   {
-    printf("pollserver: recv from fd %d: \n%s\n",clientFd,RawRequest);
+    printf("pollserver: recv from fd %d: \n%s\n",clientFd,RawChunk);
     
-    HttpRequest  *parsedRequest= buildHttpRequest(RawRequest);
-    if (parsedRequest== NULL)
-      return;
-    httpResponse *response=routeHttpRequest(parsedRequest);
-    if (response ==NULL)
+    httpResponse* response = NULL;
+    if (client->state== READING_HEADERS)
     {
-      freeRequest(parsedRequest);
-      free(RawRequest);
+      client->request= buildHttpRequest(RawChunk);
+      if (client->request== NULL)
+        return;
+      response=routeHttpRequest(client);
+
+    }
+    else //got full body
+    {
+      response=routeHttpRequestBody(client,RawChunk);
+      client->state=READING_HEADERS;
+      free(RawChunk);
       return;
     }
-    else
-       SendHttpResponse(clientFd, response);
 
+    //there is a body to the request
+    if (client->state == READING_BODY)
+    {
+      free(RawChunk);
+      //the body is fully in buffer already
+      if (client->chunkCurrLength>=client->contentLength)
+      {
+        int gotChunk =0;
+        RawChunk = getHttpChunkWrapper(clientFd,users,client,  index , &gotChunk);  
+        if (gotChunk)
+          response=routeHttpRequestBody(client,RawChunk);
+        else
+          return;
+      }
+      else
+        return;
+    }
+
+    if (response ==NULL)
+    {
+    freeRequest(client->request);
+    free(RawChunk);
+    return;
+    }
+    else
+      SendHttpResponse(clientFd, response);
+      
+    
     freeHttpResponse(response);
-    freeRequest(parsedRequest);
-    free(RawRequest);
+    freeRequest(client->request);
+    client->request=NULL;
+    free(RawChunk);
   }
 }
 
@@ -200,7 +286,7 @@ void ProccessConnections(int listener, users *users, int poll_count){
 }
 
 
-int main(int argc, int **argv)
+int main(int argc, char **argv)
 {
   int sockfd=GetListenerSocket();
   if (sockfd==-1)

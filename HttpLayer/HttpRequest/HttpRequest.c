@@ -1,12 +1,12 @@
 #include "HttpRequest.h"
 #include "../HttpHeader/HttpHeader/HttpHeader.h"
-#include "../../ContentLayer/contentUtils.h"
+#include "../../ContentLayer/ContentLoader/ContentLoader.h"
 #include "../MimeTypes/MimeTypes.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-int initializeRequest(HttpRequest *request)
+void initializeRequest(HttpRequest *request)
 {
     request->headerList=NULL;
     request->method=NULL;
@@ -16,6 +16,8 @@ int initializeRequest(HttpRequest *request)
 
 void freeRequest(HttpRequest *request)
 {
+    if (request == NULL)
+        return;
     if (request->headerList!=NULL)
         freeHeaderList(request->headerList);
     free(request->method);

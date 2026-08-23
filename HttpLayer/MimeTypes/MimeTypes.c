@@ -39,6 +39,7 @@ int addExtension(extensionList *el, const char *extension)
   if (el->extensions[el->length]==NULL)
     return 0;
   strcpy(el->extensions[el->length++],extension);
+  return 1;
 }
 
 

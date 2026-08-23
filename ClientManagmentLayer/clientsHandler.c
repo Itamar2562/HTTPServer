@@ -10,7 +10,10 @@ int initializeClient(client * clients, int index)
   if (clients[index].buffer ==NULL)
     return 0;
   clients[index].chunkCurrLength=0;
+  clients[index].contentLength=0;
+  clients[index].state=READING_HEADERS;
   clients[index].chunkMaxLength=STARTING_BUFFER_SIZE;
+  clients[index].request=NULL;
   return 1;
 }
 
@@ -18,6 +21,7 @@ int initializeClient(client * clients, int index)
 void delFromClients(client *clients, int i,int client_count )
 {
   free(clients[i].buffer);
+  freeRequest(clients[i].request);
   clients[i]=clients[(client_count-1)];
 }
 

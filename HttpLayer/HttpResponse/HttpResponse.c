@@ -35,6 +35,9 @@ const char *getStatusHeader(int statusCode)
         case 200:
             status="200 OK";
             break;
+        case 201:
+            status = "201 Created";
+            break;
         case 404:
             status="404 Not Found";
             break;
@@ -95,6 +98,14 @@ char *buildCompleteResponse(httpResponse *r, size_t *fullResponseLength)
     return fullResponse;
 }
 
+
+void addContentLengthHeader(httpResponse *r)
+{
+  char buffer[256];
+  snprintf(buffer, sizeof(buffer), "%zu", r->body_length);
+
+  addHeader(r->headersList,"Content-Length",buffer );
+}
 
 
 

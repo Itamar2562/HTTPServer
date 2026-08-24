@@ -22,5 +22,8 @@ void freeHttpResponse(httpResponse *response);
 char *buildCompleteResponse(httpResponse *r, size_t *fullResponseLength);
 
 
+void addContentLengthHeader(httpResponse *r);
+
+
 
 

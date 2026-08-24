@@ -1,6 +1,6 @@
 #include "HttpRequest.h"
 #include "../HttpHeader/HttpHeader/HttpHeader.h"
-#include "../../ContentLayer/ContentLoader/ContentLoader.h"
+#include "../../ContentLayer/ContentUtils/ContentUtils.h"
 #include "../MimeTypes/MimeTypes.h"
 #include <stdlib.h>
 #include <stdio.h>

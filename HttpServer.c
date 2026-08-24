@@ -16,6 +16,7 @@
 #include "HttpLayer/HttpResponse/HttpResponse.h"
 #include "HttpLayer/HttpHeader/HttpHeader/HttpHeader.h"
 #include "HttpLayer/HttpMethods/GET/HttpGet.h"
+#include "HttpLayer/HttpMethods/POST/HttpPOST.h"
 #include "HttpLayer/HttpRequest/HttpRequest.h"
 
 
@@ -37,6 +38,7 @@ int switchToReadingBodyState(client *client, HttpRequest *request)
   long int contentLength = strtol(str_value, NULL ,10);
   client->contentLength = contentLength;
   client->state = READING_BODY;
+  free(str_value);
   return 1;
 }
 
@@ -59,8 +61,8 @@ httpResponse* routeHttpRequest(client *client)
 
   else if (strcmp(request->method,"GET")==0)
   {
-    if (GETResponse(response,request) == 0)
-       return NULL;
+    if (GETResponse(response,request))
+       return response;
   }
   else if (strcmp(request->method,"POST")==0)
   {
@@ -73,13 +75,23 @@ httpResponse* routeHttpRequest(client *client)
     return NULL;
   }
 
-  return response;
+  return NULL;
 }
 
 httpResponse *routeHttpRequestWithBody(client *c, const char *body)
 {
-  if (strcmp(c->request->method, "POST")==0);
-    //POSTResponse(c->request, body);
+  httpResponse *response = (httpResponse *) malloc( sizeof(httpResponse));
+  if (response ==NULL)
+    return NULL;
+  if (initializeHttpResponse(response) ==0)
+    return NULL;
+
+  if (strcmp(c->request->method, "POST")==0)
+  {
+    if (POSTResponse(response, c->request, body))
+        return response;
+  }
+    
   return NULL;
 }
 
@@ -204,8 +216,31 @@ char *getHttpChunkWrapper(int clientFd,users *users ,client *client, int *index,
   return RawChunk;
 }
 
+httpResponse *processBufferBodyData(client *client , int *gotChunk , int *BodyExistsFlag)
+{
+  (*gotChunk ) = 0;
+    if (client->contentLength <=0) //there is no body
+      {
+          freeRequest(client->request);
+          client->state=READING_HEADERS;
+          (*BodyExistsFlag)=0;
+          return NULL;
+      }
 
-
+    //the body is fully in buffer already
+    else if (client->chunkCurrLength>0 && client->chunkCurrLength>=client->contentLength)
+    {
+      char *RawChunk = findChunkInBuffer(client,gotChunk);  
+      if (gotChunk)
+      {
+        httpResponse *response=routeHttpRequestWithBody(client,RawChunk);
+        client->state=READING_HEADERS;
+        free(RawChunk);
+        return response;
+      }
+    }
+    return NULL;
+}
 
 void handleClientData(int listener, users *users, int *index)
 {
@@ -220,14 +255,17 @@ void handleClientData(int listener, users *users, int *index)
     if (RawChunk ==NULL)
       RawChunk = findChunkInBuffer(client , &gotChunk);
 
-    if (!gotChunk || RawChunk ==NULL)
-      continue;
+    if (!gotChunk || RawChunk == NULL)
+    break;
+
     printf("pollserver: recv from fd %d: \n%s\n",clientFd,RawChunk);
     
     httpResponse* response = NULL;
     if (client->state== READING_HEADERS)
     {
       client->request= buildHttpRequest(RawChunk);
+      free(RawChunk);
+      RawChunk=NULL;
       if (client->request== NULL)
         continue;;
       response=routeHttpRequest(client);
@@ -237,52 +275,30 @@ void handleClientData(int listener, users *users, int *index)
       response=routeHttpRequestWithBody(client,RawChunk);
       client->state=READING_HEADERS;
       free(RawChunk);
-      continue;;
+      RawChunk = NULL;
     }
-    //there is a body to the request
+    //there is a body to the request. if it got here it means its still in buffer
     if (client->state == READING_BODY)
     {
       free(RawChunk);
       RawChunk = NULL;
-      if (client->contentLength <=0) //there is no body
-      {
-          freeRequest(client->request);
-          client->state=READING_HEADERS;
-          continue;
-      }
-
-      //the body is fully in buffer already
-      else if (client->chunkCurrLength>0 && client->chunkCurrLength>=client->contentLength)
-      {
-        int gotChunk =0;
-        RawChunk = findChunkInBuffer(client,&gotChunk);  
-        if (gotChunk){
-          response=routeHttpRequestWithBody(client,RawChunk);
-          client->state=READING_HEADERS;
-        }
-        else
-          continue;;
-      }
-      else //body not fully in buffer, return to poll
-        return;
+      int BodyExistsFlag = 1;
+      response = processBufferBodyData(client, &gotChunk , &BodyExistsFlag);
+      if (response ==NULL && BodyExistsFlag) //there is no response but a body exists
+        continue;
     }
 
     if (response ==NULL)
-    {
       freeRequest(client->request);
-      free(RawChunk);
-      RawChunk = NULL;
-      continue;
-    }
-    else
-      SendHttpResponse(clientFd, response);
       
-    freeHttpResponse(response);
-    freeRequest(client->request);
-    client->request=NULL;
-    free(RawChunk);
-  
-    RawChunk =NULL;
+    else
+    {
+        SendHttpResponse(clientFd, response);
+        freeHttpResponse(response);
+        freeRequest(client->request);
+        client->request=NULL;
+    }
+    
   }
 
 }

@@ -9,6 +9,7 @@ static paramList *getAcceptParamList(HttpRequest *request, const char *headerNam
 
   paramList *pl= parseParameterizedHeader(RawAcceptParameters);
   sortParameterizedHeaderByQuality(pl);
+  free(RawAcceptParameters);
   return pl;
 }
 

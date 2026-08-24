@@ -1,5 +1,6 @@
 #include "HttpGet.h"
 #include "../../../ContentLayer/ContentLoader/ContentLoader.h"
+#include "../../../ContentLayer/ContentUtils/ContentUtils.h"
 #include "../../MimeTypes/MimeTypes.h"
 #include "../../HttpHeader/HttpHeadersParameters/HttpHeaderParam/paramList/paramList.h"
 #include "../../requestPreferences/requestPreferences.h"
@@ -26,14 +27,10 @@ int buildHttpGetResponse(httpResponse *r ,Content *c , int statusCode, char *ver
     }
   strcpy(r->version,version);
 
-  char buffer[256];
-  snprintf(buffer, sizeof(buffer), "%zu", r->body_length);
-
-  addHeader(r->headersList,"Content-Length",buffer );
-  snprintf(buffer, sizeof(buffer), "inline; filename=\"%s\"", c->fileName);
-  addHeader(r->headersList,"Content-Disposition",buffer);
+  addContentLengthHeader(r);
 
   addHeader(r->headersList,"Content-Type",getHttpMimeType(c->type));
+
   addHeader(r->headersList, "Connection", connetion);
 
   return 1;

@@ -17,11 +17,6 @@ typedef struct
 
 Content *loadContent(const char *filePath);
 void freeContent(Content *c);
-char *getFileExtension(const char *filepath);
-char *getFileName(const char *filePath);
-char *changeFileExtension(const char *filePath, const char *extension);
-
-
 
 
 

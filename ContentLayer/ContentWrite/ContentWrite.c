@@ -6,8 +6,9 @@ int writeContentToFile(const char *fileName ,const char *data)
     FILE *f= openFile(fileName,"w");
     if (f==NULL)
         return 0;
-    
-    return fprintf(f, data);
+    int status= fprintf(f, data);
+    fclose(f);
+    return status;
 }
 
 int addContentToFile(const char *fileName , const char *data)
@@ -16,5 +17,7 @@ int addContentToFile(const char *fileName , const char *data)
     if (f==NULL)
         return 0;
     
-    return fprintf(f, data);
+    int status= fprintf(f, data);
+    fclose(f);
+    return status;
 }

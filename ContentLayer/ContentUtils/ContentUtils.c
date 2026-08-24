@@ -86,6 +86,17 @@ FILE *openFile(const char *filePath ,const char *mode )
      return f;
 }
 
+int writeToFile(const char *filePath , const char *data)
+{
+    FILE *f = openFile(filePath , "w+");
+
+    int status = fprintf(f, "%s" , data);
+    fclose(f);
+    return status;
+}
+
+
+
 char *getFileExtension(const char *filepath)
  {
     const char *dot = strrchr(filepath, '.');

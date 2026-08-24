@@ -12,6 +12,7 @@ char *changeFileExtension(const char *filePath, const char *extension);
 char *getFileName(const char *filePath);
 long getFileSize(FILE *f);
 char *omitFileName(const char *filePath);
+int writeToFile(const char *filePath , const char *data);
 
 
 

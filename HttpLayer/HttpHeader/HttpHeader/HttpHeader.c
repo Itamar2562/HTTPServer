@@ -40,6 +40,8 @@ void addCLRF(headerList *headerList)
 
 void addHeader(headerList *headerList, const char *key, const char *value)
 {
+    if (headerList ==NULL)
+        return;
     if (headerList->count>=headerList->max_size)
     {
         headerList->max_size *=2;
@@ -235,13 +237,27 @@ headerList* buildHeaderListFromHTTPRequest(char *headers)
     return hl;
 }
 
+char *getValueWithoutCLRF(const char *value)
+{
+    size_t index = strcspn(value,"\r");
+
+    char *new_val = malloc(index + 1);
+    if (new_val == NULL)
+        return NULL;
+    
+    strncpy(new_val , value, index);
+    new_val[index] = '\0';
+
+    return new_val;
+}
+
 char *getHeaderValue(headerList *hl, const char *key)
 {
      for (int i=0; i <hl->count; i++)
     {
         if (strcmp(hl->headers[i].key, key)==0)
         {
-            return hl->headers[i].value;
+            return getValueWithoutCLRF(hl->headers[i].value);
         }
     }
     return NULL;

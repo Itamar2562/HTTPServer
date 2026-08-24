@@ -1,16 +1,54 @@
 #include "HttpPOST.h"
+#include <sqlite3.h>
 
-#include "../../../ContentLayer/contentUtils.h"
-#include "../../MimeTypes/MimeTypes.h"
-#include "../../HttpHeader/HttpHeadersParameters/HttpHeaderParam/paramList/paramList.h"
-#include "../../requestPreferences/requestPreferences.h"
+#include "../../../ContentLayer/ContentUtils/ContentUtils.h"
+
+
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 
-
-int POSTResponse(httpResponse *response,HttpRequest *request)
+int BuildCreatedRresponse(httpResponse *response ,const char *version,  const char *body , int bodyLen)
 {
- 
+    response->statusCode = 201;
+
+    response->body= (char *)malloc(bodyLen +1 );
+
+    if (body ==NULL || response->body ==NULL)
+        return 0;
+    memcpy(response->body, body, bodyLen);
+    response->body_length=bodyLen;
+
+    response->version= (char *)malloc(strlen(version) +1);
+    if (response->version ==NULL)
+        {
+        free(response->body);
+        return 0;
+        }
+    strcpy(response->version,version);
+
+    addContentLengthHeader(response);
+    return 1;
+}
+
+
+
+int POSTResponse(httpResponse *response,HttpRequest *request,const char *body)
+{
+     if (!isPathSafe(request->path))
+        return 0;
+    char *fullPath=getCompleteFilePath(request->path);
+    if (fullPath ==NULL)
+        return 0;
+
+    int amountWritten = writeToFile(fullPath, body);
+    if (amountWritten >0)
+    {
+        BuildCreatedRresponse(response , request->version , body , amountWritten);
+        return 1;
+    }
+    return 0;
  
 }
+

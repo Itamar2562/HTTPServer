@@ -17,29 +17,19 @@ void initializeContent(Content *c)
 
 
 
-Content *loadContent(const char *filePath)
-{   
-    if (filePath ==NULL)
-        return NULL; 
-    if (!isPathSafe(filePath))
+Content *loadContent(const char *fullPath)
+{  
+    if (fullPath == NULL)
         return NULL;
-    char *fullPath=getCompleteFilePath(filePath);
-    if (fullPath ==NULL)
-        return NULL;
-
     Content *c=(Content *)malloc(sizeof(Content) );
     if (c== NULL)
-    {
-        free(fullPath);
         return NULL;
-    }
+
     initializeContent(c);        
     FILE *f=openFile(fullPath, "r");
     if (f==NULL) //file not found
-    {
-        free(fullPath);
         return c;
-    }
+
     long length=getFileSize(f);
     if (length<0 || (unsigned long)length>=SIZE_MAX )
         return NULL;
@@ -49,7 +39,6 @@ Content *loadContent(const char *filePath)
         {
             fprintf(stderr,"memory error");
             freeContent(c);
-            free(fullPath);
             return NULL;
         }
     size_t bytes_read= fread(c->data,1, length, f );
@@ -58,7 +47,6 @@ Content *loadContent(const char *filePath)
     {
         fprintf(stderr , "reading file error\n");
         freeContent(c);
-        free(fullPath);
         return NULL;
     }
     c->type=getFileExtension(fullPath);
@@ -73,7 +61,6 @@ Content *loadContent(const char *filePath)
     c->data_size=bytes_read;
     c->exists=1;
     fclose(f);
-    free(fullPath);
     return c;
 }
 

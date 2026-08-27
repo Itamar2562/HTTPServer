@@ -5,7 +5,6 @@
 #include <string.h>
 #include <errno.h>
 
-
 #include "CommsLayer/CommsUtils/commsUtils.h"
 #include "CommsLayer/PfdsUtils/pfdUtils.h"
 
@@ -25,7 +24,7 @@
 
 int validVersion(HttpRequest *request)
 {
-  if (strcmp(request->version,"HTTP/1.1")==0)
+  if (strcmp(request->version,DEFAULT_HTTP_VERSION)==0)
     return 1;
   return 0;
 }
@@ -43,7 +42,7 @@ int switchToReadingBodyState(client *client, HttpRequest *request)
 }
 
 
-httpResponse* routeHttpRequest(client *client)
+httpResponse* routeHttpRequest(client *client , int *errorFlag)
 {
   HttpRequest *request = client->request;
   httpResponse *response = (httpResponse *) malloc( sizeof(httpResponse));
@@ -57,9 +56,10 @@ httpResponse* routeHttpRequest(client *client)
   {
     if (getNotValidResponse(response, request) ==0)
       return NULL;
+    return response;
   }
 
-  else if (strcmp(request->method,"GET")==0)
+  if (strcmp(request->method,"GET")==0)
   {
     if (GETResponse(response,request))
        return response;
@@ -70,11 +70,12 @@ httpResponse* routeHttpRequest(client *client)
       switchToReadingBodyState(client, request);
       return NULL;
   }
-  else{
-    freeHttpResponse(response);
-    return NULL;
+  else
+  {
+    buildBadRequestResponse(response);
+    (*errorFlag) = 1;
+    return response;
   }
-
   return NULL;
 }
 
@@ -216,14 +217,14 @@ char *getHttpChunkWrapper(int clientFd,users *users ,client *client, int *index,
   return RawChunk;
 }
 
-httpResponse *processBufferBodyData(client *client , int *gotChunk , int *BodyExistsFlag)
+httpResponse *processBufferBodyData(client *client , int *gotChunk , int *errorFlag)
 {
   (*gotChunk ) = 0;
     if (client->contentLength <=0) //there is no body
       {
           freeRequest(client->request);
           client->state=READING_HEADERS;
-          (*BodyExistsFlag)=0;
+          (*errorFlag)=0;
           return NULL;
       }
 
@@ -236,6 +237,8 @@ httpResponse *processBufferBodyData(client *client , int *gotChunk , int *BodyEx
         httpResponse *response=routeHttpRequestWithBody(client,RawChunk);
         client->state=READING_HEADERS;
         free(RawChunk);
+        if (response ==NULL)
+          (*errorFlag) =1;
         return response;
       }
     }
@@ -260,6 +263,7 @@ void handleClientData(int listener, users *users, int *index)
 
     printf("pollserver: recv from fd %d: \n%s\n",clientFd,RawChunk);
     
+    int errorFlag=0;
     httpResponse* response = NULL;
     if (client->state== READING_HEADERS)
     {
@@ -267,10 +271,17 @@ void handleClientData(int listener, users *users, int *index)
       free(RawChunk);
       RawChunk=NULL;
       if (client->request== NULL)
-        continue;;
-      response=routeHttpRequest(client);
+      {
+        response = (httpResponse *)malloc(sizeof(httpResponse));
+        if (response == NULL || initializeHttpResponse(response) ==0)
+          continue;
+        buildBadRequestResponse(response);   
+        errorFlag =1;
+      }
+      else
+        response=routeHttpRequest(client , &errorFlag);
     }
-    else //got full body
+    else //got full body chunk
     {
       response=routeHttpRequestWithBody(client,RawChunk);
       client->state=READING_HEADERS;
@@ -282,9 +293,8 @@ void handleClientData(int listener, users *users, int *index)
     {
       free(RawChunk);
       RawChunk = NULL;
-      int BodyExistsFlag = 1;
-      response = processBufferBodyData(client, &gotChunk , &BodyExistsFlag);
-      if (response ==NULL && BodyExistsFlag) //there is no response but a body exists
+      response = processBufferBodyData(client, &gotChunk , &errorFlag);
+      if (response ==NULL && !errorFlag) //there is no response but a body exists
         continue;
     }
 
@@ -298,7 +308,11 @@ void handleClientData(int listener, users *users, int *index)
         freeRequest(client->request);
         client->request=NULL;
     }
-    
+    if (errorFlag){
+      disconnectUser(clientFd, users, index);
+      break;
+    }
+
   }
 
 }
@@ -362,8 +376,7 @@ int main(int argc, char **argv)
   while (1)
   {
       int poll_count=poll(u->pfds, u->curr_count, -1);
-      if 
-      (poll_count==-1){
+      if (poll_count==-1){
         perror("poll error");
         exit(1);
       }

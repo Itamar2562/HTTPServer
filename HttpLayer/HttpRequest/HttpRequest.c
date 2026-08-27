@@ -12,6 +12,7 @@ void initializeRequest(HttpRequest *request)
     request->method=NULL;
     request->path=NULL;
     request->version=NULL;
+    request->fileType = NULL;
 }
 
 void freeRequest(HttpRequest *request)

@@ -36,9 +36,9 @@ int BuildCreatedRresponse(httpResponse *response ,const char *version,  const ch
 
 int POSTResponse(httpResponse *response,HttpRequest *request,const char *body)
 {
-     if (!isPathSafe(request->path))
+     if (!isPathSafe(request->path , USER_FILES_PATH))
         return 0;
-    char *fullPath=getCompleteFilePath(request->path);
+    char *fullPath=getCompleteFilePath(request->path , USER_FILES_PATH);
     if (fullPath ==NULL)
         return 0;
 

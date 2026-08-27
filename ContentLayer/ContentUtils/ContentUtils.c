@@ -4,12 +4,32 @@
 #include "ContentUtils.h"
 //I removed filename for realPath bc realpath fails if file doesn't exists
 //so instead I check if the dir itself exists and is safe
-int isPathSafe(const char *userFilepath)
+
+static const char *getCorrectPathStart(paths p)
+{
+    switch (p)
+    {
+    case DEFAULT_PATH:
+        return FILE_PATH_START;
+        break;
+    case USER_FILES_PATH:
+        return USER_FILES_PATH_START;
+        break;
+    default:
+        return NULL;
+        break;
+    }
+
+}
+
+
+int isPathSafe(const char *userFilepath , paths p)
 {   
+    const char *filePathStart= getCorrectPathStart(p);
     char *dir = omitFileName(userFilepath);
     if (dir== NULL)
         return 0;
-    char *basePath = realpath(FILE_PATH_START, NULL);
+    char *basePath = realpath(filePathStart, NULL);
     if (basePath ==NULL)
     {
         perror("realpath base");
@@ -49,12 +69,13 @@ int isPathSafe(const char *userFilepath)
    return 1;
 }
 
-char *getCompleteFilePath(const char *path)
+char *getCompleteFilePath(const char *path , paths p)
 {
-  char *completePath= (char *)malloc(strlen(path)+ strlen(FILE_PATH_START) +1);
+  const char *filePathStart= getCorrectPathStart(p);
+  char *completePath= (char *)malloc(strlen(path)+ strlen(filePathStart) +1);
   if (completePath ==NULL)
     return NULL;
-  strcpy(completePath, FILE_PATH_START);
+  strcpy(completePath, filePathStart);
   strcat(completePath, path);
 
   return completePath;
@@ -67,11 +88,12 @@ char *omitFileName(const char *filePath)
         length=0;
     else
         length = lastSlash - filePath;
-    char *fullDir=(char *)malloc(length +1);
+    char *fullDir=(char *)malloc(length +2);
     if (fullDir ==NULL)
         return NULL;
     memcpy(fullDir, filePath , length);
-    fullDir[length]='\0';
+    fullDir[length]='/';
+    fullDir[length+1]='\0';
     return fullDir;
 }
 

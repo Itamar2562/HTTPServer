@@ -4,3 +4,4 @@
 
 int GETResponse(httpResponse *response,HttpRequest *request);
 int getNotValidResponse(httpResponse *response, HttpRequest *request);
+int buildBadRequestResponse(httpResponse *response);

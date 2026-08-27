@@ -4,6 +4,7 @@
 #include "HttpResponse.h"
 #include "../HttpHeader/HttpHeader/HttpHeader.h"
 
+#define DEFAULT_HTTP_VERSION "HTTP/1.1"
 
 typedef struct 
 {

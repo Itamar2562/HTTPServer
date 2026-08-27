@@ -3,6 +3,7 @@
 
 #define DEFAULT_SITE "index.html"
 #define NOT_FOUND_NAME "NotFound"
+#define BAD_REQUEST_NAME "BadRequest"
 
 typedef struct 
 {

@@ -2,9 +2,16 @@
 #include <stdio.h>
 
 #define FILE_PATH_START "ContentLayer/content/Files/"
+#define USER_FILES_PATH_START "ContentLayer/content/Files/UserFiles/"
 
-int isPathSafe(const char *userFilepath);
-char *getCompleteFilePath(const char *path);
+typedef enum 
+{
+    DEFAULT_PATH,
+    USER_FILES_PATH
+} paths;
+
+int isPathSafe(const char *userFilepath , paths p );
+char *getCompleteFilePath(const char *path , paths p);
 FILE *openFile(const char *filePath ,const char *mode );
 char *getFileExtension(const char *filepath);
 int hasFileExtension(const char *filePath);

@@ -38,6 +38,9 @@ const char *getStatusHeader(int statusCode)
         case 201:
             status = "201 Created";
             break;
+        case 400:
+            status = "400 Bad Request";
+            break;
         case 404:
             status="404 Not Found";
             break;

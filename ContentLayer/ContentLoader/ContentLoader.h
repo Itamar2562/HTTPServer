@@ -17,6 +17,7 @@ typedef struct
 
 
 Content *loadContent(const char *filePath);
+Content *getContentDetailsWithoutBody(const char *fullPath);
 void freeContent(Content *c);
 
 

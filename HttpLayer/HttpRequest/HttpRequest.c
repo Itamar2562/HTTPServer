@@ -1,6 +1,7 @@
 #include "HttpRequest.h"
 #include "../HttpHeader/HttpHeader/HttpHeader.h"
 #include "../../ContentLayer/ContentUtils/ContentUtils.h"
+#include "../../ContentLayer/ContentLoader/ContentLoader.h"
 #include "../MimeTypes/MimeTypes.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -118,4 +119,12 @@ HttpRequest *buildHttpRequest(char *request)
 
     ParsedRequest->fileType=getFileExtension(ParsedRequest->path);
     return ParsedRequest;
+}
+
+const char *redirectToCorrectPath(char *path)
+{
+  if (strcmp(path, "/")==0)
+     return DEFAULT_SITE;
+  else
+    return path+1; //ignore the /
 }

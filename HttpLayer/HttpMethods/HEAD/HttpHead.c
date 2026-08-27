@@ -1,24 +1,12 @@
-#include "HttpGet.h"
-#include "../../../ContentLayer/ContentLoader/ContentLoader.h"
+#include "HttpHead.h"
 #include "../../../ContentLayer/ContentUtils/ContentUtils.h"
 #include "../../MimeTypes/MimeTypes.h"
 #include "../../HttpHeader/HttpHeadersParameters/HttpHeaderParam/paramList/paramList.h"
 #include "../../requestPreferences/requestPreferences.h"
 #include <string.h>
-#include <stdio.h>
-#include <stdint.h>
-
-
-
-int buildHttpGetResponse(httpResponse *r ,Content *c , int statusCode, char *version, const char *connetion)
+int buildHttpHEADResponse(httpResponse *r ,Content *c , int statusCode, char *version, const char *connetion)
 {
-  r->body= (char *)malloc(c->data_size +1 );
-  if (r->body ==NULL)
-    return 0;
-  if (c->data !=NULL)
-    memcpy(r->body, c->data, c->data_size);
-  else
-    r->body = NULL;
+  r->body = NULL;
   r->statusCode=statusCode;
   r->body_length=c->data_size;
   if (version ==NULL)
@@ -36,26 +24,8 @@ int buildHttpGetResponse(httpResponse *r ,Content *c , int statusCode, char *ver
   return 1;
 }
 
-int getNotValidResponse(httpResponse *response, HttpRequest *request)
-{
-    const char* filePath= "VersionNotSupported.html";
-    char *fullPath=getCompleteFilePath(filePath, DEFAULT_PATH);
-    if (fullPath ==NULL )
-    {
-      free(fullPath);
-      return 0;
-    }
-    Content *c=loadContent(fullPath);
-    if (c==NULL){
-      free(fullPath);
-      return 0;
-    }
-    int status= buildHttpGetResponse(response, c, 505, DEFAULT_HTTP_VERSION, "close" );
-    free(fullPath);
-    return status;
-}
 
-Content *getContentBasedOnAcceptHeader(const char * filePath, HttpRequest *request)
+Content *getHeadContentBasedOnAcceptHeader(const char * filePath, HttpRequest *request)
 {
    
     paramList *pl =getAcceptMimeTypeParamList(request);
@@ -74,7 +44,7 @@ Content *getContentBasedOnAcceptHeader(const char * filePath, HttpRequest *reque
           continue;
         printf("%s\n",fullPath);
 
-        Content *c=loadContent(fullPath);
+        Content *c=getContentDetailsWithoutBody(fullPath);
         free(fullPath);
 
         if (c==NULL)
@@ -96,9 +66,9 @@ Content *getContentBasedOnAcceptHeader(const char * filePath, HttpRequest *reque
     return NULL;
 }
 
-int getNotFoundResponse(httpResponse *response,HttpRequest *request)
+int getHeadNotFoundResponse(httpResponse *response,HttpRequest *request)
 {
-  Content *c=getContentBasedOnAcceptHeader(NOT_FOUND_NAME , request);  //first search by accept
+  Content *c=getHeadContentBasedOnAcceptHeader(NOT_FOUND_NAME , request);  //first search by accept
   if (c==NULL)
   {
     char* filePath= changeFileExtension(NOT_FOUND_NAME, "html"); //fallback to html
@@ -108,7 +78,7 @@ int getNotFoundResponse(httpResponse *response,HttpRequest *request)
       free(fullPath);
       return 0;
     }
-    c= loadContent(fullPath);
+    c= getContentDetailsWithoutBody(fullPath);
     if (c==NULL)
     {
       free (filePath);
@@ -116,33 +86,11 @@ int getNotFoundResponse(httpResponse *response,HttpRequest *request)
       return 0;
     }
   }
-  int status = buildHttpGetResponse(response, c, 404,request->version, "keep-alive");
+  int status = buildHttpHEADResponse(response, c, 404,request->version, "keep-alive");
   return status;
 }
 
-int buildBadRequestResponse(httpResponse *response)
-{
-    char* filePath= changeFileExtension(BAD_REQUEST_NAME, "html"); //fallback to html
-    char *fullPath=getCompleteFilePath(filePath, DEFAULT_PATH);
-    if (fullPath ==NULL || filePath == NULL)
-    {
-      free (filePath);
-      free(fullPath);
-      return 0;
-    }
-    Content *c= loadContent(fullPath);
-    if (c==NULL){
-      free (filePath);
-      free(fullPath);
-      return 0;
-    }
-  int status = buildHttpGetResponse(response, c, 400,NULL, "close");
-  free (filePath);
-  free(fullPath);
-  return status;
-}
-
-int GETResponse(httpResponse *response,HttpRequest *request)
+int HEADResponse(httpResponse *response,HttpRequest *request)
 {
   //check version if not correct return html
   const char *filePath= redirectToCorrectPath(request->path);
@@ -154,30 +102,23 @@ int GETResponse(httpResponse *response,HttpRequest *request)
     if (fullPath ==NULL)
         return 0;
 
-  Content *c=loadContent(fullPath);
+  Content *c=getContentDetailsWithoutBody(fullPath);
   if (c==NULL)
   {
     free(fullPath);
-    return getNotFoundResponse (response, request);
+    return getHeadNotFoundResponse (response, request);
   }
 
   if (!c->exists) 
   {
-    c=getContentBasedOnAcceptHeader(fullPath , request);
+    c=getHeadContentBasedOnAcceptHeader(fullPath , request);
     if (c==NULL)
     {
       free(fullPath);
-      int status = getNotFoundResponse (response, request);
+      int status = getHeadNotFoundResponse (response, request);
       return status;
     }
   }
-
-  int status= buildHttpGetResponse(response,c, 200,request->version,"keep-alive");
-  freeContent(c);
-  free(fullPath);
+   int status = buildHttpHEADResponse(response, c, 200,request->version, "keep-alive");
   return status;
 }
-
-
-
-

@@ -21,6 +21,7 @@ typedef struct
 int initializeHttpResponse(httpResponse * response);
 void freeHttpResponse(httpResponse *response);
 char *buildCompleteResponse(httpResponse *r, size_t *fullResponseLength);
+void addDefaultHTTPOnePointOneHeaders(httpResponse *r , const char *mimeType , const char *connectionType);
 
 
 void addContentLengthHeader(httpResponse *r);

@@ -17,6 +17,7 @@
 #include "HttpLayer/HttpMethods/GET/HttpGet.h"
 #include "HttpLayer/HttpMethods/POST/HttpPOST.h"
 #include "HttpLayer/HttpRequest/HttpRequest.h"
+#include "HttpLayer/HttpMethods/HEAD/HttpHead.h"
 
 
 #include "ContentLayer/ContentLoader/ContentLoader.h"
@@ -69,6 +70,11 @@ httpResponse* routeHttpRequest(client *client , int *errorFlag)
       freeHttpResponse(response);
       switchToReadingBodyState(client, request);
       return NULL;
+  }
+  else if (strcmp(request->method,"HEAD")==0)
+  {
+    if (HEADResponse(response , request))
+      return response;
   }
   else
   {

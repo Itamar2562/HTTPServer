@@ -82,7 +82,10 @@ char *buildCompleteResponse(httpResponse *r, size_t *fullResponseLength)
     if (responseHeaders ==NULL || responseLine ==NULL)
         return NULL;
 
-    (*fullResponseLength)=responseLineLength+responseHeadersLength + r->body_length;
+    if (r->body != NULL)
+        (*fullResponseLength)=responseLineLength+responseHeadersLength + r->body_length;
+    else
+        (*fullResponseLength)=responseLineLength+responseHeadersLength;
     char *fullResponse =(char *)malloc(*fullResponseLength);
 
     if (fullResponse ==NULL)
@@ -93,14 +96,22 @@ char *buildCompleteResponse(httpResponse *r, size_t *fullResponseLength)
     offset+= responseLineLength;
     memcpy(fullResponse +offset, responseHeaders, responseHeadersLength);
     offset +=  responseHeadersLength;
-    memcpy(fullResponse +offset, r->body , r->body_length);
-
-    printf("%.*s\n",(int)(offset+ r->body_length),fullResponse);
+    if (r->body !=NULL)
+        memcpy(fullResponse +offset, r->body , r->body_length);
+    //printf("%.*s\n",(int)(offset+ r->body_length),fullResponse);
     free(responseHeaders);
     free(responseLine);
     return fullResponse;
 }
 
+
+void addDefaultHTTPOnePointOneHeaders(httpResponse *r , const char *mimeType , const char *connectionType)
+{
+    addContentLengthHeader(r);
+  addHeader(r->headersList,"Content-Type",mimeType);
+
+  addHeader(r->headersList, "Connection", connectionType);
+}
 
 void addContentLengthHeader(httpResponse *r)
 {

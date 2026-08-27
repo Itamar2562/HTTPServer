@@ -16,4 +16,5 @@ HttpRequest *buildHttpRequest(char *request);
 void freeRequest(HttpRequest *request);
 
 
+const char *redirectToCorrectPath(char *path);
 

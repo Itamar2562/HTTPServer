@@ -28,13 +28,13 @@ int BuildCreatedRresponse(httpResponse *response ,const char *version,  const ch
         }
     strcpy(response->version,version);
 
-    addContentLengthHeader(response);
+    addDefaultHTTPOnePointOneHeaders(response,"html" , "keep-alive" );
     return 1;
 }
 
 
 
-int POSTResponse(httpResponse *response,HttpRequest *request,const char *body)
+int POSTResponse(httpResponse *response, HttpRequest *request,const char *body)
 {
      if (!isPathSafe(request->path , USER_FILES_PATH))
         return 0;

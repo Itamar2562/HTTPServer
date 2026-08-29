@@ -9,7 +9,6 @@
 #include <stdint.h>
 
 
-
 int buildHttpGetResponse(httpResponse *r ,Content *c , int statusCode, char *version, const char *connetion)
 {
   r->body= (char *)malloc(c->data_size +1 );

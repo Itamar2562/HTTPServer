@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My First Webpage</title>
+
+</head>
+
+<body>
+    <h1 class="headlineBasic">Login</h1>
+    <div>
+        <label>User Name*</label><br />
+        <input type="text" id="username" name="username" placeholder="enter user name" required /><br /><br />
+        <label class="size" for="password">Password*</label><br />
+        <input type="password" id="password" name="password" placeholder="enter password" required /><br /><br />
+        <button type="submit">submit</button>
+        <button type="reset">reset</button>
+        <h2 id="wrongPass" runat="server"  style="color:red">Incorrect email or password</h2>
+    </div>
+    <h2>Havn't registerd yet? <a runat="server" class="SizeForBigA" href="/Register">Register here</a></h2>
+
+
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My First Webpage</title>
+</head>
+
+<body>
+     <h1 class="headlineBasic">register</h1>
+
+    <label class="size" for="FirstName">First Name*</label><br />
+    <input type="text" id="FirstName" name="FirstName" placeholder="enter first name" required /><br /><br />
+
+    <label  class="size" for="LastName">Last Name*</label><br />
+    <input type="text" id="LastName" name="LastName" placeholder="enter last name" required/><br /><br />
+
+    <label class="size" for="username">User Name*</label><br />
+    <input type="text" id="username" name="username" placeholder="enter user name" required /><br /><br />
+
+    <label class="size" for="password">Password*</label><br />
+    <input type="password" id="password" name="password" placeholder="enter password" required /><br /><br />
+
+    <label class="size" for="BirthDate">Date Of Birth*</label><br />
+    <input type="date" id="BirthDate" name="BirthDate" required /><br /><br />
+
+    <label class="size" for="city">Home City*</label><br />
+    <input type="text" id="city" name="city" placeholder="enter home city"  required /><br /><br />
+
+    <button type="submit">submit</button>
+    <button type="reset">reset</button>
+    <h2 id="wrongPass2" runat="server"  style="color:red">User already exists</h2>
+
+    <h2>Already got an account? <a href="/Login">Login here</a></h2>
+
+</body>
+</html>

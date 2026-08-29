@@ -34,8 +34,9 @@ int BuildCreatedRresponse(httpResponse *response ,const char *version,  const ch
 
 
 
-int POSTResponse(httpResponse *response, HttpRequest *request,const char *body)
+int POSTResponse(httpResponse *response, HttpRequest *request,const char *body , const char *IP)
 {
+    printf("niggas ip is :%s\n",IP);
      if (!isPathSafe(request->path , USER_FILES_PATH))
         return 0;
     char *fullPath=getCompleteFilePath(request->path , USER_FILES_PATH);

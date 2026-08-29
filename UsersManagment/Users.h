@@ -2,10 +2,11 @@
 
 #include "../CommsLayer/PfdsUtils/pfdUtils.h"
 #include "../ClientManagmentLayer/clientUtils.h"
+#include "../CommsLayer/CommsUtils/commsUtils.h"
 
 typedef struct 
 {
-  struct pollfd *pfds;
+  pfdsWrapper *pw;
   client *clients;
 
   int max_size;
@@ -14,3 +15,4 @@ typedef struct
 }users;
 
 void freeUsers(users *u);
+int initializeUsers(users *u);

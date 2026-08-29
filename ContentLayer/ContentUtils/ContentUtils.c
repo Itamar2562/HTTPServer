@@ -111,13 +111,24 @@ FILE *openFile(const char *filePath ,const char *mode )
 int writeToFile(const char *filePath , const char *data)
 {
     FILE *f = openFile(filePath , "w+");
-
+    if (f==NULL)
+        return 0;
     int status = fprintf(f, "%s" , data);
     fclose(f);
     return status;
 }
 
 
+int addContentToFile(const char *fileName , const char *data)
+{
+    FILE *f= openFile(fileName,"a");
+    if (f==NULL)
+        return 0;
+    
+    int status = fprintf(f, "%s" , data);
+    fclose(f);
+    return status;
+}
 
 char *getFileExtension(const char *filepath)
  {
@@ -133,12 +144,13 @@ char *getFileExtension(const char *filepath)
     return extension;
 }
 
-int hasFileExtension(const char *filePath){
+int hasFileExtension(const char *filePath)
+    {
     const char *dot=strrchr(filePath, '.');
-        if (!dot || dot==filePath)
-            return 0;
+    if (!dot || dot==filePath)
+        return 0;
     return 1;
-}
+    }
 
 char *changeFileExtension(const char *filePath, const char *extension)
 {

@@ -1,11 +1,18 @@
 #pragma once
 
-#define _POSIX_C_SOURCE 200112L
+//#define _POSIX_C_SOURCE 200112L
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <poll.h>
+
+typedef struct
+ {
+    struct pollfd *pfds;
+    char **ips;
+} pfdsWrapper;
+
 
 void printAddressIPV4(struct sockaddr_in* addr);
 const char* getPresIpAddr(struct sockaddr* genericAddr, char *buffer, size_t size);
@@ -16,8 +23,12 @@ void sendData(int sockfd, char *data,size_t length);
 int sendDataAll(int sockfd, char *data, size_t length);
 int recvChunk(int clientFd, char *buffer,size_t *maxLength , size_t *currLength);
 
-int handleNewConnection(int listener , int fd_count, int fd_size, struct pollfd **pollfd);
+int handleNewConnection(int listener , int count, int size, pfdsWrapper *pw);
 
+int addToIPs(char **IPs[], const char *IP,  int count, int size);
+void delFromPfdsWrapper(pfdsWrapper *pw , int i, int count);
+int initializePfdsWrapper(pfdsWrapper *pw , int max_size);
+void freePfdWrapper(pfdsWrapper *pw , int count);
 
 
 

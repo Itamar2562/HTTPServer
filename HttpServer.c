@@ -85,8 +85,9 @@ httpResponse* routeHttpRequest(client *client , int *errorFlag)
   return NULL;
 }
 
-httpResponse *routeHttpRequestWithBody(client *c, const char *body)
+httpResponse *routeHttpRequestWithBody(users *users, int index, const char *body)
 {
+  client *c=&users->clients[index];
   httpResponse *response = (httpResponse *) malloc( sizeof(httpResponse));
   if (response ==NULL)
     return NULL;
@@ -95,10 +96,9 @@ httpResponse *routeHttpRequestWithBody(client *c, const char *body)
 
   if (strcmp(c->request->method, "POST")==0)
   {
-    if (POSTResponse(response, c->request, body))
+    if (POSTResponse(response, c->request, body ,users->pw->ips[index]))
         return response;
   }
-    
   return NULL;
 }
 
@@ -203,17 +203,17 @@ void disconnectUser(int clientFd, users *users, int *index)
 {
   printf("removed socket %d\n",clientFd);
     close(clientFd);
-    delFromPfds(users->pfds, *index, users->curr_count);
+    delFromPfdsWrapper(users->pw, *index, users->curr_count);
     delFromClients(users->clients,*index, users->curr_count );
     (*index)--; //delete swaps the last with curr so we need to check again this pos
     users->curr_count--;
 }
 
-char *getHttpChunkWrapper(int clientFd,users *users ,client *client, int *index, int *gotChunk)
+char *getHttpChunkWrapper(int clientFd,users *users ,int *index, int *gotChunk)
 {
 
   int errorFlag =0;
-  char *RawChunk=getHTTPChunk(clientFd, client, &errorFlag, gotChunk );
+  char *RawChunk=getHTTPChunk(clientFd, &users->clients[*index], &errorFlag, gotChunk );
   if (errorFlag)
   {
     disconnectUser(clientFd, users, index);
@@ -223,8 +223,9 @@ char *getHttpChunkWrapper(int clientFd,users *users ,client *client, int *index,
   return RawChunk;
 }
 
-httpResponse *processBufferBodyData(client *client , int *gotChunk , int *errorFlag)
+httpResponse *processBufferBodyData(users *users, int index , int *gotChunk , int *errorFlag)
 {
+  client *client= &users->clients[index];
   (*gotChunk ) = 0;
     if (client->contentLength <=0) //there is no body
       {
@@ -240,11 +241,17 @@ httpResponse *processBufferBodyData(client *client , int *gotChunk , int *errorF
       char *RawChunk = findChunkInBuffer(client,gotChunk);  
       if (gotChunk)
       {
-        httpResponse *response=routeHttpRequestWithBody(client,RawChunk);
+        httpResponse *response=routeHttpRequestWithBody(users,index,RawChunk);
         client->state=READING_HEADERS;
         free(RawChunk);
         if (response ==NULL)
-          (*errorFlag) =1;
+        {
+        response = (httpResponse *) malloc( sizeof(httpResponse));
+        if (response ==NULL || (initializeHttpResponse(response) ==0))
+          return NULL;
+        buildBadRequestResponse(response);
+        (*errorFlag) = 1;
+        }
         return response;
       }
     }
@@ -254,11 +261,11 @@ httpResponse *processBufferBodyData(client *client , int *gotChunk , int *errorF
 void handleClientData(int listener, users *users, int *index)
 {
  
-  int clientFd=users->pfds[*index].fd;
+  int clientFd=users->pw->pfds[*index].fd;
 
   client *client =&users->clients[*index];
   int gotChunk =0;
-  char *RawChunk = getHttpChunkWrapper(clientFd,users,client, index , &gotChunk);
+  char *RawChunk = getHttpChunkWrapper(clientFd,users,index , &gotChunk);
   while (gotChunk) //go through the buffer (the loop doesn't do anymore recv it searches for chunks in the buffer)
   {
     if (RawChunk ==NULL)
@@ -289,7 +296,7 @@ void handleClientData(int listener, users *users, int *index)
     }
     else //got full body chunk
     {
-      response=routeHttpRequestWithBody(client,RawChunk);
+      response=routeHttpRequestWithBody(users,*index,RawChunk);
       client->state=READING_HEADERS;
       free(RawChunk);
       RawChunk = NULL;
@@ -299,21 +306,17 @@ void handleClientData(int listener, users *users, int *index)
     {
       free(RawChunk);
       RawChunk = NULL;
-      response = processBufferBodyData(client, &gotChunk , &errorFlag);
+      response = processBufferBodyData(users,*index, &gotChunk , &errorFlag);
       if (response ==NULL && !errorFlag) //there is no response but a body exists
         continue;
     }
-
-    if (response ==NULL)
-      freeRequest(client->request);
-      
-    else
+    if (response !=NULL)
     {
         SendHttpResponse(clientFd, response);
         freeHttpResponse(response);
-        freeRequest(client->request);
-        client->request=NULL;
     }
+    freeRequest(client->request);
+    client->request=NULL;
     if (errorFlag){
       disconnectUser(clientFd, users, index);
       break;
@@ -327,11 +330,11 @@ void ProccessConnections(int listener, users *users, int poll_count){
   for (int i=0; i<users->curr_count && poll_count >0;i++)
   {
 
-    if (users->pfds[i].revents & (POLLIN | POLLHUP)) // we got new data (smg to read or hang up)
+    if (users->pw->pfds[i].revents & (POLLIN | POLLHUP)) // we got new data (smg to read or hang up)
     {
-      if (users->pfds[i].fd==listener) //the listener has smg to read (a new conn)
+      if (users->pw->pfds[i].fd==listener) //the listener has smg to read (a new conn)
         {
-          int clientFd=handleNewConnection(listener, users->curr_count, users->max_size,&users->pfds); 
+          int clientFd=handleNewConnection(listener, users->curr_count, users->max_size,users->pw); 
           if (clientFd!=0) // no error in comms layer
           {
             int status = addToClients(&users->clients,users->curr_count,  &users->max_size);
@@ -349,6 +352,7 @@ void ProccessConnections(int listener, users *users, int poll_count){
 }
 
 
+
 int main(int argc, char **argv)
 {
   int sockfd=GetListenerSocket();
@@ -364,24 +368,19 @@ int main(int argc, char **argv)
     close(sockfd);
     return 1;
   }
-  u->max_size=5;
-  u->curr_count=1;
-  u->pfds=(struct pollfd* )malloc(u->max_size* sizeof(struct pollfd));
-  u->clients=(client *)malloc(u->max_size * sizeof(client));
-  if (u->pfds== NULL || u->clients ==NULL)
+
+  if (initializeUsers(u) == 0)
   {
-    free(u->pfds);
-    free(u->clients);
-    free(u);
-    close (sockfd);
+    close(sockfd);
     return 1;
   }
-  u->pfds[0].fd=sockfd;
-  u->pfds[0].events=POLLIN;
+
+  u->pw->pfds[0].fd=sockfd;
+  u->pw->pfds[0].events=POLLIN;
 
   while (1)
   {
-      int poll_count=poll(u->pfds, u->curr_count, -1);
+      int poll_count=poll(u->pw->pfds, u->curr_count, -1);
       if (poll_count==-1){
         perror("poll error");
         exit(1);

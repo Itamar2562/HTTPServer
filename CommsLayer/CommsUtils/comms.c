@@ -10,6 +10,65 @@
 #define SERVER_PORT "4556"
 
 
+int addToIPs(char ***IPs, const char *IP,  int count, int size)
+{
+  if (count>= size)
+  {
+    size*=2;
+    char **temp=realloc((*IPs),sizeof(char *) * size );
+    if (temp == NULL)
+      return 0;
+    else
+      *IPs=temp;
+  }
+  (*IPs)[count] = (char *)malloc (strlen(IP) +1 );
+  if ((*IPs)[count] == NULL)
+    return 0;
+  strcpy((*IPs)[count] , IP);
+  return 1;
+}
+
+
+void delFromIPs(char **IPs, int i,int count )
+{
+  free(IPs[i]);
+  IPs[i]=IPs[(count-1)];
+}
+
+void delFromPfdsWrapper(pfdsWrapper *pw , int i, int count)
+{
+  delFromIPs(pw->ips, i, count);
+  delFromPfds(pw->pfds , i ,count);
+}
+
+int initializePfdsWrapper(pfdsWrapper *pw , int max_size)
+{
+  pw->pfds=(struct pollfd* )malloc(max_size* sizeof(struct pollfd));
+  pw->ips = (char **)malloc(max_size* sizeof(char *));
+
+  if (pw->ips == NULL || pw->ips == NULL)
+    {
+      free(pw->ips);
+      free(pw->pfds);
+      return 0;
+    }
+  return 1;
+}
+
+void freePfdWrapper(pfdsWrapper *pw , int count)
+{
+  if (pw ==NULL)
+    return;
+  for (int i=0; i < count; i++)
+  {
+    free(pw->ips[i]);
+  }
+  free(pw->ips);
+  free(pw->pfds);
+  free(pw);
+}
+
+
 void printAddressIPV4(struct sockaddr_in* addr)
 {
   char buffer[INET_ADDRSTRLEN];
@@ -197,7 +256,7 @@ int recvChunk(int clientFd, char *buffer,size_t *maxLength , size_t *currLength)
   return 1;
 }
 
-int handleNewConnection(int listener , int fd_count, int fd_size, struct pollfd **pollfd)
+int handleNewConnection(int listener , int count, int size, pfdsWrapper *pw)
 {
   struct sockaddr_storage clientAddr;
   socklen_t clientAddrLen;
@@ -213,12 +272,15 @@ int handleNewConnection(int listener , int fd_count, int fd_size, struct pollfd 
   }
   else
   {
-    int status= addToPfds(pollfd, clientFd, fd_count,fd_size);
-    if (!status)
+    getPresIpAddr((struct sockaddr*)&clientAddr,clientIP, sizeof(clientIP));
+    int Pfdsstatus= addToPfds(&pw->pfds, clientFd, count,size);
+    int IPstatus = addToIPs(&pw->ips , clientIP, count , size);
+    if (!Pfdsstatus || !IPstatus)
       return 0;
-    printf("new conenction from %s from socket %d\n", 
-    getPresIpAddr((struct sockaddr*)&clientAddr,clientIP, sizeof(clientIP)),clientFd);
+    printf("new conenction from %s from socket %d\n", clientIP,clientFd);
 
+
+    printf("ip is : %s\n" , clientIP);
     return clientFd;
   }
 }

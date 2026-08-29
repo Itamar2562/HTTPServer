@@ -145,7 +145,7 @@ int GETResponse(httpResponse *response,HttpRequest *request)
 {
   //check version if not correct return html
   const char *filePath= redirectToCorrectPath(request->path);
-  printHeaders(request->headerList);
+  //printHeaders(request->headerList);
 
     if (!isPathSafe(filePath , DEFAULT_PATH))
         return 0;

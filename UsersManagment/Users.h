@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../CommsLayer/PfdsUtils/pfdUtils.h"
 #include "../ClientManagmentLayer/clientUtils.h"
+
 #include "../CommsLayer/CommsUtils/commsUtils.h"
 
 typedef struct 
 {
-  pfdsWrapper *pw;
+  NetworkList *networkList;
   client *clients;
 
   int max_size;

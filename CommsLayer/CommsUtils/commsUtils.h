@@ -7,11 +7,8 @@
 #include <arpa/inet.h>
 #include <poll.h>
 
-typedef struct
- {
-    struct pollfd *pfds;
-    char **ips;
-} pfdsWrapper;
+#include "../NetworkList/NetworkList.h"
+
 
 
 void printAddressIPV4(struct sockaddr_in* addr);
@@ -23,12 +20,8 @@ void sendData(int sockfd, char *data,size_t length);
 int sendDataAll(int sockfd, char *data, size_t length);
 int recvChunk(int clientFd, char *buffer,size_t *maxLength , size_t *currLength);
 
-int handleNewConnection(int listener , int count, int size, pfdsWrapper *pw);
+int handleNewConnection(int listener , int count, int size, NetworkList *networkList);
 
-int addToIPs(char **IPs[], const char *IP,  int count, int size);
-void delFromPfdsWrapper(pfdsWrapper *pw , int i, int count);
-int initializePfdsWrapper(pfdsWrapper *pw , int max_size);
-void freePfdWrapper(pfdsWrapper *pw , int count);
-
+int addToIPs(char ***IPs, const char *IP,  int count, int size);
 
 

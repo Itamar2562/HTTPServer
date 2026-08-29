@@ -96,7 +96,7 @@ httpResponse *routeHttpRequestWithBody(users *users, int index, const char *body
 
   if (strcmp(c->request->method, "POST")==0)
   {
-    if (POSTResponse(response, c->request, body ,users->pw->ips[index]))
+    if (POSTResponse(response, c->request, body ,users->networkList->ips[index]))
         return response;
   }
   return NULL;
@@ -203,7 +203,7 @@ void disconnectUser(int clientFd, users *users, int *index)
 {
   printf("removed socket %d\n",clientFd);
     close(clientFd);
-    delFromPfdsWrapper(users->pw, *index, users->curr_count);
+    delFromNetworkList(users->networkList, *index, users->curr_count);
     delFromClients(users->clients,*index, users->curr_count );
     (*index)--; //delete swaps the last with curr so we need to check again this pos
     users->curr_count--;
@@ -261,7 +261,7 @@ httpResponse *processBufferBodyData(users *users, int index , int *gotChunk , in
 void handleClientData(int listener, users *users, int *index)
 {
  
-  int clientFd=users->pw->pfds[*index].fd;
+  int clientFd=users->networkList->pfds[*index].fd;
 
   client *client =&users->clients[*index];
   int gotChunk =0;
@@ -330,11 +330,11 @@ void ProccessConnections(int listener, users *users, int poll_count){
   for (int i=0; i<users->curr_count && poll_count >0;i++)
   {
 
-    if (users->pw->pfds[i].revents & (POLLIN | POLLHUP)) // we got new data (smg to read or hang up)
+    if (users->networkList->pfds[i].revents & (POLLIN | POLLHUP)) // we got new data (smg to read or hang up)
     {
-      if (users->pw->pfds[i].fd==listener) //the listener has smg to read (a new conn)
+      if (users->networkList->pfds[i].fd==listener) //the listener has smg to read (a new conn)
         {
-          int clientFd=handleNewConnection(listener, users->curr_count, users->max_size,users->pw); 
+          int clientFd=handleNewConnection(listener, users->curr_count, users->max_size,users->networkList); 
           if (clientFd!=0) // no error in comms layer
           {
             int status = addToClients(&users->clients,users->curr_count,  &users->max_size);
@@ -375,12 +375,12 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  u->pw->pfds[0].fd=sockfd;
-  u->pw->pfds[0].events=POLLIN;
+  u->networkList->pfds[0].fd=sockfd;
+  u->networkList->pfds[0].events=POLLIN;
 
   while (1)
   {
-      int poll_count=poll(u->pw->pfds, u->curr_count, -1);
+      int poll_count=poll(u->networkList->pfds, u->curr_count, -1);
       if (poll_count==-1){
         perror("poll error");
         exit(1);

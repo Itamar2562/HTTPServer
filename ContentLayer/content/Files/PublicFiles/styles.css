@@ -1,0 +1,230 @@
+/* ==========================================================================
+   Shared styles — login.html, register.html, index.html
+   Dark navy background, blue accent, kept plain on purpose.
+   ========================================================================== */
+
+:root {
+  --bg: #0a0f1e;
+  --panel: #121a2e;
+  --panel-border: rgba(96, 165, 250, 0.16);
+  --blue: #3b82f6;
+  --blue-light: #60a5fa;
+  --blue-glow: #38bdf8;
+  --text: #e7ecf7;
+  --text-dim: #8993ab;
+  --input-bg: #0e1526;
+  --input-border: #223052;
+  --radius: 14px;
+  --font-display: "Space Grotesk", "Inter", -apple-system, sans-serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-body);
+  color: var(--text);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.16), transparent 55%),
+    radial-gradient(1px 1px at 20% 30%, rgba(96, 165, 250, 0.35) 1px, transparent 1px),
+    radial-gradient(1px 1px at 70% 65%, rgba(96, 165, 250, 0.25) 1px, transparent 1px),
+    radial-gradient(1px 1px at 85% 20%, rgba(96, 165, 250, 0.3) 1px, transparent 1px),
+    radial-gradient(1px 1px at 35% 80%, rgba(96, 165, 250, 0.25) 1px, transparent 1px),
+    var(--bg);
+  background-size: auto, 140px 140px, 140px 140px, 140px 140px, 140px 140px, auto;
+}
+
+/* Centers a single block vertically + horizontally — used by the auth pages */
+.center-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue-glow);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 36px 32px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--blue-glow), transparent);
+}
+
+h1.heading {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.5rem;
+  margin: 0 0 6px;
+  color: var(--text);
+}
+
+.subtext {
+  margin: 0 0 28px;
+  font-size: 0.88rem;
+  color: var(--text-dim);
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.field label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.field input {
+  width: 100%;
+  padding: 11px 13px;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  color: var(--text);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field input::placeholder {
+  color: #4b5670;
+}
+
+.field input:hover {
+  border-color: #2d3d63;
+}
+
+.field input:focus-visible {
+  border-color: var(--blue-glow);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+  outline: none;
+}
+
+.btn-primary {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px 18px;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #04101f;
+  background: linear-gradient(135deg, var(--blue-light), var(--blue));
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.08);
+}
+
+.btn-primary:active {
+  transform: scale(0.99);
+}
+
+.form-footer {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--input-border);
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.text-link {
+  color: var(--blue-light);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.text-link:hover {
+  text-decoration: underline;
+}
+
+/* -------- Inline button variant (auto width, for navbars/rows) -------- */
+
+.btn-primary.btn-inline {
+  width: auto;
+  margin-top: 0;
+  padding: 9px 20px;
+}
+
+/* -------- Navbar (home page) -------- */
+
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px clamp(20px, 5vw, 56px);
+}
+
+.nav-brand {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.greeting {
+  font-size: 0.88rem;
+  color: var(--text-dim);
+}
+
+/* -------- Hero (home page) -------- */
+
+.hero {
+  min-height: calc(100vh - 76px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+}
+
+.hero-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(2.2rem, 6vw, 3.4rem);
+  color: var(--text);
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

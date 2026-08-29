@@ -1,7 +1,7 @@
 #pragma once
 #include <stdio.h>
 
-#define FILE_PATH_START "ContentLayer/content/Files/ServerFiles/"
+#define FILE_PATH_START "ContentLayer/content/Files/PublicFiles/"
 #define USER_FILES_PATH_START "ContentLayer/content/Files/UserFiles/"
 
 typedef enum 

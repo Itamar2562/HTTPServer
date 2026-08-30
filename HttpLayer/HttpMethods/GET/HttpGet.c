@@ -119,8 +119,11 @@ int getNotFoundResponse(httpResponse *response,HttpRequest *request)
   return status;
 }
 
-int buildBadRequestResponse(httpResponse *response)
+httpResponse  *getBadRequestResponse()
 {
+    httpResponse * response = (httpResponse *)malloc(sizeof(httpResponse));
+    if (response == NULL || initializeHttpResponse(response) ==0)
+     return 0;
     char* filePath= changeFileExtension(BAD_REQUEST_NAME, "html"); //fallback to html
     char *fullPath=getCompleteFilePath(filePath, DEFAULT_PATH);
     if (fullPath ==NULL || filePath == NULL)
@@ -138,7 +141,9 @@ int buildBadRequestResponse(httpResponse *response)
   int status = buildHttpGetResponse(response, c, 400,NULL, "close");
   free (filePath);
   free(fullPath);
-  return status;
+  if (!status)
+    return NULL;
+  return response;
 }
 
 int GETResponse(httpResponse *response,HttpRequest *request)

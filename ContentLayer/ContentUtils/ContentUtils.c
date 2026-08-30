@@ -15,6 +15,8 @@ static const char *getCorrectPathStart(paths p)
     case USER_FILES_PATH:
         return USER_FILES_PATH_START;
         break;
+    case DATABASE_PATH:
+        return DATABASE_PATH_START;
     default:
         return NULL;
         break;

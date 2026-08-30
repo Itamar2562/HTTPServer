@@ -3,11 +3,13 @@
 
 #define FILE_PATH_START "ContentLayer/content/Files/PublicFiles/"
 #define USER_FILES_PATH_START "ContentLayer/content/Files/UserFiles/"
+#define DATABASE_PATH_START "ContentLayer/content/DataBases/"
 
 typedef enum 
 {
     DEFAULT_PATH,
-    USER_FILES_PATH
+    USER_FILES_PATH,
+    DATABASE_PATH
 } paths;
 
 int isPathSafe(const char *userFilepath , paths p );
